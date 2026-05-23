@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct FolderDetailView: View {
     let folder: DockFolder
+    @Binding var selectedFolder: DockFolder?
     @EnvironmentObject var store: FolderStore
     @State private var isEditing = false
     @State private var editedName: String = ""
@@ -101,6 +102,7 @@ struct FolderDetailView: View {
         let trimmed = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty && trimmed != folder.name {
             try? store.renameFolder(folder, to: trimmed)
+            selectedFolder = store.folders.first { $0.name == trimmed }
         }
         isEditing = false
     }

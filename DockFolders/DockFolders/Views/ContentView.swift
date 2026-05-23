@@ -27,7 +27,7 @@ struct ContentView: View {
             }
 
             if let folder = selectedFolder {
-                FolderDetailView(folder: folder)
+                FolderDetailView(folder: folder, selectedFolder: $selectedFolder)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Text("Select a folder")

@@ -93,38 +93,11 @@ class DockController {
     }
 
     private func readDockSection(_ section: String) -> [[String: Any]] {
-        let process = Process()
-        let pipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        process.arguments = ["read", "com.apple.dock", section]
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        try? process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        guard let rawString = String(data: data, encoding: .utf8), !rawString.isEmpty else {
-            return []
-        }
-
-        let plistProcess = Process()
-        let plistPipeIn = Pipe()
-        let plistPipeOut = Pipe()
-        plistProcess.executableURL = URL(fileURLWithPath: "/usr/bin/plutil")
-        plistProcess.arguments = ["-convert", "xml1", "-o", "-", "--", "-"]
-        plistProcess.standardInput = plistPipeIn
-        plistProcess.standardOutput = plistPipeOut
-        plistProcess.standardError = FileHandle.nullDevice
-        try? plistProcess.run()
-        plistPipeIn.fileHandleForWriting.write(data)
-        plistPipeIn.fileHandleForWriting.closeFile()
-        plistProcess.waitUntilExit()
-
-        let xmlData = plistPipeOut.fileHandleForReading.readDataToEndOfFile()
-        guard let parsed = try? PropertyListSerialization.propertyList(from: xmlData, format: nil) as? [[String: Any]] else {
-            return []
-        }
-        return parsed
+        guard let value = CFPreferencesCopyAppValue(
+            section as CFString,
+            "com.apple.dock" as CFString
+        ) else { return [] }
+        return value as? [[String: Any]] ?? []
     }
 
     private func writeDockSection(_ section: String, entries: [[String: Any]]) {

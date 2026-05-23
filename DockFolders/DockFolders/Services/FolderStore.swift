@@ -66,6 +66,17 @@ class FolderStore: ObservableObject {
         }
     }
 
+    /// Load a single folder by name without reloading the entire store.
+    /// Used by the popup path for faster display.
+    func loadFolder(named name: String) -> DockFolder? {
+        let folderURL = Self.baseURL.appendingPathComponent(name)
+        guard fm.fileExists(atPath: folderURL.path) else { return nil }
+        let apps = loadApps(in: folderURL)
+        let isInDock = DockController.shared.isFolderInDock(folderURL)
+        let gridConfig = Self.loadGridConfig(in: folderURL)
+        return DockFolder(id: folderURL.path, name: name, apps: apps, isInDock: isInDock, gridConfig: gridConfig)
+    }
+
     func reload() {
         guard let contents = try? fm.contentsOfDirectory(
             at: Self.baseURL,

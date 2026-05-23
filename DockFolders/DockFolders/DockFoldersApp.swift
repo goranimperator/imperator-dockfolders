@@ -117,8 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
     }
 
     private func openFolderPopup(named folderName: String, mousePosition: NSPoint? = nil) {
-        store.reload()
-        guard let folder = store.folders.first(where: { $0.name == folderName }) else { return }
+        guard let folder = store.loadFolder(named: folderName) else { return }
         FolderPopupController.shared.show(
             folder: folder,
             mousePosition: mousePosition ?? NSEvent.mouseLocation,

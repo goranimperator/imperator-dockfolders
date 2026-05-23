@@ -43,7 +43,7 @@ class LauncherGenerator {
         printf '%s\\n%s' "\(name)" "$MOUSE" > /tmp/dockfolders_open
         if ! /usr/bin/pgrep -xq DockFolders; then
           /usr/bin/open -g -b com.dockfolders.app --args --background
-          sleep 1
+          for i in $(seq 1 20); do /usr/bin/pgrep -xq DockFolders && break; sleep 0.05; done
         fi
         /usr/bin/notifyutil -p com.dockfolders.open
         """

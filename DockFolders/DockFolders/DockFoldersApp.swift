@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, ObservableObject {
     let store = FolderStore()
     let appearanceObserver = AppearanceObserver()
     private var mainWindow: NSWindow?
@@ -18,11 +18,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         }
     }
 
-nonisolated func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+    nonisolated func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         Task { @MainActor in
             showMainWindow()
         }
         return true
+    }
+
+    nonisolated func windowWillClose(_ notification: Notification) {
+        Task { @MainActor in
+            mainWindow = nil
+        }
     }
 
     nonisolated func application(_ application: NSApplication, open urls: [URL]) {
@@ -49,12 +55,17 @@ nonisolated func applicationShouldHandleReopen(_ sender: NSApplication, hasVisib
             .environmentObject(appearanceObserver)
             .frame(minWidth: 600, minHeight: 400)
 
-        let window = mainWindow ?? NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
+        let window = mainWindow ?? {
+            let w = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            w.isReleasedWhenClosed = false
+            w.delegate = self
+            return w
+        }()
         window.contentView = NSHostingView(rootView: contentView)
         window.title = "Imperator Dock Folders"
         window.setFrameAutosaveName("MainWindow")

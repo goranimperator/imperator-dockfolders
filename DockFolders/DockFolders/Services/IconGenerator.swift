@@ -70,29 +70,30 @@ class IconGenerator {
 
     private static func renderFolderIcon(appIcons: [NSImage], columns: Int, isDark: Bool) -> NSImage {
         let size: CGFloat = 1024
-        let inset: CGFloat = size * 0.10
+        let inset: CGFloat = size * 0.10 - 2
         let image = NSImage(size: NSSize(width: size, height: size))
 
         image.lockFocus()
 
         let bgRect = NSRect(x: inset, y: inset, width: size - inset * 2, height: size - inset * 2)
         let bgSize = size - inset * 2
-        let cornerRadius: CGFloat = bgSize * 180 / 1024
+        let cornerRadius: CGFloat = bgSize * 229 / 1024
+        let borderWidth: CGFloat = 12
         let bgPath = NSBezierPath(roundedRect: bgRect, xRadius: cornerRadius, yRadius: cornerRadius)
 
         if isDark {
-            NSColor(red: 30/255, green: 30/255, blue: 30/255, alpha: 0.7).setFill()
+            NSColor(red: 30/255, green: 30/255, blue: 30/255, alpha: 0.85).setFill()
         } else {
-            NSColor(red: 245/255, green: 245/255, blue: 245/255, alpha: 0.6).setFill()
+            NSColor(red: 245/255, green: 245/255, blue: 245/255, alpha: 0.75).setFill()
         }
         bgPath.fill()
 
         if isDark {
-            NSColor(white: 1.0, alpha: 0.15).setStroke()
+            NSColor(white: 1.0, alpha: 0.17).setStroke()
         } else {
             NSColor(white: 0.0, alpha: 0.12).setStroke()
         }
-        bgPath.lineWidth = 4
+        bgPath.lineWidth = borderWidth
         bgPath.stroke()
 
         if !appIcons.isEmpty {

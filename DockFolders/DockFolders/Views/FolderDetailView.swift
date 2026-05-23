@@ -113,6 +113,8 @@ struct FolderDetailView: View {
 struct GridSettingsBar: View {
     let folder: DockFolder
     @EnvironmentObject var store: FolderStore
+    @State private var spinAngle: Double = 0
+    @State private var updateHovered = false
 
     private let columnOptions = [2, 3, 4, 5]
     private let pageOptions = [4, 6, 8, 9, 12, 15, 16, 20, 25]
@@ -160,15 +162,24 @@ struct GridSettingsBar: View {
             Spacer()
 
             Button(action: {
-                IconGenerator.generateIcon(for: folder.url)
-                if folder.isInDock {
-                    DockController.shared.refreshDock()
+                withAnimation(.interpolatingSpring(stiffness: 40, damping: 5)) {
+                    spinAngle += 360
+                }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    IconGenerator.generateIcon(for: folder.url)
+                    if folder.isInDock {
+                        DockController.shared.refreshDock()
+                    }
                 }
             }) {
                 Image(systemName: "arrow.triangle.2.circlepath")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(updateHovered ? .primary : .secondary)
+                    .scaleEffect(updateHovered ? 1.2 : 1.0)
+                    .rotationEffect(.degrees(spinAngle))
+                    .animation(.easeOut(duration: 0.15), value: updateHovered)
             }
             .buttonStyle(.borderless)
+            .onHover { hovering in updateHovered = hovering }
             .help("Update dock icon")
 
             gridPreview
@@ -453,13 +464,8 @@ struct AppGridCarousel: View {
                     .resizable()
                     .frame(width: iconSize, height: iconSize)
 
-                Button(action: { onRemove(app) }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.white, .red)
-                }
-                .buttonStyle(.borderless)
-                .offset(x: 4, y: -4)
+                DeleteBadge { onRemove(app) }
+                    .offset(x: 4, y: -4)
             }
 
             Text(app.name)
@@ -521,5 +527,22 @@ struct AppGridCarousel: View {
                     }
             }
         }
+    }
+}
+
+struct DeleteBadge: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 21))
+                .foregroundStyle(.white, Color(red: 1.0, green: 0.37, blue: 0.34))
+                .scaleEffect(isHovered ? 1.2 : 1.0)
+                .animation(.easeOut(duration: 0.15), value: isHovered)
+        }
+        .buttonStyle(.borderless)
+        .onHover { hovering in isHovered = hovering }
     }
 }

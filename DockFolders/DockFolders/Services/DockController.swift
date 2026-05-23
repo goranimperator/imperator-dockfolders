@@ -6,7 +6,8 @@ class DockController {
     private func dockURLVariants(for path: String) -> [String] {
         let withSpaces = "file://" + path
         let encoded = "file://" + path.replacingOccurrences(of: " ", with: "%20")
-        return [withSpaces, encoded]
+        // macOS stores dock URLs with and without trailing slash
+        return [withSpaces, encoded, withSpaces + "/", encoded + "/"]
     }
 
     private func matchesFolder(_ urlString: String, folderURL: URL) -> Bool {

@@ -123,20 +123,27 @@ class FolderPopupController {
         panel.contentView = NSHostingView(rootView: popupView)
         panel.setFrameOrigin(origin)
 
-        // Genie open: scale from arrow tip at bottom
+        // Genie open: scale from bottom center
         panel.alphaValue = 0
         if let contentView = panel.contentView {
             contentView.wantsLayer = true
             if let layer = contentView.layer {
-                let anchorX = arrowRelativeX / panelWidth
                 let oldAnchor = layer.anchorPoint
-                let newAnchor = CGPoint(x: anchorX, y: 0)
+                let newAnchor = CGPoint(x: 0.5, y: 1.0)
                 layer.anchorPoint = newAnchor
                 layer.position = CGPoint(
                     x: layer.position.x + (newAnchor.x - oldAnchor.x) * layer.bounds.width,
                     y: layer.position.y + (newAnchor.y - oldAnchor.y) * layer.bounds.height
                 )
-                layer.transform = CATransform3DMakeScale(0.2, 0.08, 1)
+
+                let scaleFrom = CATransform3DMakeScale(0.2, 0.08, 1)
+                let anim = CABasicAnimation(keyPath: "transform")
+                anim.fromValue = scaleFrom
+                anim.toValue = CATransform3DIdentity
+                anim.duration = 0.25
+                anim.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
+                layer.transform = CATransform3DIdentity
+                layer.add(anim, forKey: "genieOpen")
             }
         }
 
@@ -144,10 +151,8 @@ class FolderPopupController {
         panel.makeKey()
 
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.25
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
-            ctx.allowsImplicitAnimation = true
-            panel.contentView?.layer?.transform = CATransform3DIdentity
+            ctx.duration = 0.15
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().alphaValue = 1
         }
 
@@ -210,11 +215,22 @@ class FolderPopupController {
         lastDismissTime = Date()
 
         let panelRef = p
+
+        if let layer = panelRef.contentView?.layer {
+            let scaleTo = CATransform3DMakeScale(0.2, 0.08, 1)
+            let anim = CABasicAnimation(keyPath: "transform")
+            anim.fromValue = CATransform3DIdentity
+            anim.toValue = scaleTo
+            anim.duration = 0.18
+            anim.timingFunction = CAMediaTimingFunction(controlPoints: 0.7, 0, 0.84, 0)
+            anim.fillMode = .forwards
+            anim.isRemovedOnCompletion = false
+            layer.add(anim, forKey: "genieClose")
+        }
+
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.18
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.7, 0, 0.84, 0)
-            ctx.allowsImplicitAnimation = true
-            panelRef.contentView?.layer?.transform = CATransform3DMakeScale(0.2, 0.08, 1)
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panelRef.animator().alphaValue = 0
         }, completionHandler: {
             panelRef.close()

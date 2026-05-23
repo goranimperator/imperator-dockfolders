@@ -56,7 +56,6 @@ class FolderPopupController {
     private var currentFolderName: String?
     private var lastDismissedFolder: String?
     private var lastDismissTime: Date?
-    private var collapsedFrame: NSRect = .zero
 
     func show(folder: DockFolder, mousePosition: NSPoint, onEdit: (() -> Void)? = nil) {
         // Toggle: if same folder was just dismissed (dock icon clicked again), don't reopen
@@ -95,7 +94,7 @@ class FolderPopupController {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
-        panel.animationBehavior = .none
+        panel.animationBehavior = .alertPanel
         panel.acceptsMouseMovedEvents = true
 
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mousePosition) })
@@ -122,27 +121,9 @@ class FolderPopupController {
             }
         )
         panel.contentView = NSHostingView(rootView: popupView)
-
-        let fullFrame = NSRect(origin: origin, size: NSSize(width: panelWidth, height: panelHeight))
-        let collapsedFrame = NSRect(
-            x: origin.x + panelWidth / 2 - 20,
-            y: origin.y,
-            width: 40,
-            height: 10
-        )
-
-        self.collapsedFrame = collapsedFrame
-        panel.setFrame(collapsedFrame, display: false)
-        panel.alphaValue = 0
+        panel.setFrameOrigin(origin)
         panel.orderFrontRegardless()
         panel.makeKey()
-
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.25
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
-            panel.animator().setFrame(fullFrame, display: true)
-            panel.animator().alphaValue = 1
-        }
 
         var scrollAccumX: CGFloat = 0
         var scrollAccumY: CGFloat = 0
@@ -202,17 +183,8 @@ class FolderPopupController {
         lastDismissedFolder = currentFolderName
         lastDismissTime = Date()
 
-        let panelRef = p
-        let target = collapsedFrame
-
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.18
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.7, 0, 0.84, 0)
-            panelRef.animator().setFrame(target, display: true)
-            panelRef.animator().alphaValue = 0
-        }, completionHandler: {
-            panelRef.close()
-        })
+        p.orderOut(nil)
+        p.close()
 
         panel = nil
         currentFolderName = nil

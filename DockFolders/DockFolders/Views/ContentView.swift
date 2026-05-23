@@ -58,6 +58,9 @@ struct ContentView: View {
                 selectedFolder = newFolders.first { $0.name == sel.name }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            store.reload()
+        }
     }
 }
 

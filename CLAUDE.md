@@ -146,6 +146,28 @@ Utan detta blockerar Gatekeeper appen som "damaged" vid AirDrop etc.
 5. **Launcher auto-startar appen** — `pgrep` + `open -g -b` i shell-scriptet
 6. **Manuell Update Icon-knapp** — `applicationWillTerminate` hinner inte köra ikongenerering
 
+## TODO v2
+
+### 1. Smidigare popup-upplevelse
+Undersök om popup-panelen kan öppnas snabbare/smoothare. Idag tar det ~0.5s från klick till synlig popup. Möjliga förbättringar:
+- Pre-loada folder-data vid app-start istället för `store.reload()` vid varje popup
+- Minska latensen i Darwin notification → panel-visning
+- Snabbare icon-laddning (cacha NSImage-instanser)
+- Profilera `FolderPopupController.show()` för att hitta flaskhalsar
+
+### 2. Popup ska stanna ovanför folder-ikonen i Dock
+Problem: Om användaren rör musen snabbt efter klick hamnar popup vid muspekaren istället för ovanför folder-ikonen. Orsak: musposition läses i launcher-scriptet, men det tar ~0.5s innan appen tar emot Darwin-notifikationen och visar panelen — under den tiden kan musen ha flyttats.
+
+Möjliga lösningar:
+- Spara musposition vid klick-tillfället (redan görs i launcher-scriptet via CoreGraphics) — verifiera att denna position verkligen används och inte `NSEvent.mouseLocation` som fallback
+- Beräkna dock-ikonens fasta position istället för att använda musposition: läs Dock-plistens `persistent-apps` ordning + dockens storlek/position för att beräkna exakt X-koordinat
+- Alternativt: cacha senaste klickposition per folder och återanvänd om ny position kommer inom kort tid
+
+Relevant kod:
+- `LauncherGenerator.swift` rad 42-43: scriptet skriver musposition till `/tmp/dockfolders_open`
+- `DockFoldersApp.swift` `handleDarwinNotification()`: läser filen och konverterar koordinater
+- `FolderPopupController.show()`: tar emot `mousePosition` och positionerar panelen
+
 ## Kända begränsningar
 
 - Launcher-scriptet använder Python3 för CoreGraphics muspositions-hämtning

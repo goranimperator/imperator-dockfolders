@@ -53,9 +53,21 @@ class FolderPopupController {
     private var mouseMonitor: Any?
     private var keyMonitor: Any?
     private var localKeyMonitor: Any?
+    private var currentFolderName: String?
+    private var lastDismissedFolder: String?
+    private var lastDismissTime: Date?
 
     func show(folder: DockFolder, mousePosition: NSPoint, onEdit: (() -> Void)? = nil) {
-        dismiss()
+        // Toggle: if same folder was just dismissed (dock icon clicked again), don't reopen
+        if let lastFolder = lastDismissedFolder,
+           let lastTime = lastDismissTime,
+           lastFolder == folder.name,
+           Date().timeIntervalSince(lastTime) < 0.8 {
+            lastDismissedFolder = nil
+            return
+        }
+
+        closePanel()
 
         let cols = folder.gridConfig.columns
         let rows = Int(ceil(Double(folder.gridConfig.itemsPerPage) / Double(cols)))
@@ -82,7 +94,7 @@ class FolderPopupController {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
-        panel.animationBehavior = .utilityWindow
+        panel.animationBehavior = .none
         panel.acceptsMouseMovedEvents = true
 
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mousePosition) })
@@ -109,15 +121,33 @@ class FolderPopupController {
             }
         )
         panel.contentView = NSHostingView(rootView: popupView)
-
         panel.setFrameOrigin(origin)
+
+        // Genie open: scale from arrow tip at bottom
         panel.alphaValue = 0
+        if let contentView = panel.contentView {
+            contentView.wantsLayer = true
+            if let layer = contentView.layer {
+                let anchorX = arrowRelativeX / panelWidth
+                let oldAnchor = layer.anchorPoint
+                let newAnchor = CGPoint(x: anchorX, y: 0)
+                layer.anchorPoint = newAnchor
+                layer.position = CGPoint(
+                    x: layer.position.x + (newAnchor.x - oldAnchor.x) * layer.bounds.width,
+                    y: layer.position.y + (newAnchor.y - oldAnchor.y) * layer.bounds.height
+                )
+                layer.transform = CATransform3DMakeScale(0.2, 0.08, 1)
+            }
+        }
+
         panel.orderFrontRegardless()
         panel.makeKey()
 
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.06
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            ctx.duration = 0.25
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
+            ctx.allowsImplicitAnimation = true
+            panel.contentView?.layer?.transform = CATransform3DIdentity
             panel.animator().alphaValue = 1
         }
 
@@ -158,6 +188,7 @@ class FolderPopupController {
             }
         }
 
+        currentFolderName = folder.name
         self.panel = panel
 
         mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -173,13 +204,35 @@ class FolderPopupController {
     }
 
     func dismiss() {
-        if let p = panel {
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.08
-                p.animator().alphaValue = 0
-            }, completionHandler: { p.close() })
-        }
+        guard let p = panel else { return }
+
+        lastDismissedFolder = currentFolderName
+        lastDismissTime = Date()
+
+        let panelRef = p
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.18
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.7, 0, 0.84, 0)
+            ctx.allowsImplicitAnimation = true
+            panelRef.contentView?.layer?.transform = CATransform3DMakeScale(0.2, 0.08, 1)
+            panelRef.animator().alphaValue = 0
+        }, completionHandler: {
+            panelRef.close()
+        })
+
         panel = nil
+        currentFolderName = nil
+        removeMonitors()
+    }
+
+    private func closePanel() {
+        if let p = panel { p.close() }
+        panel = nil
+        currentFolderName = nil
+        removeMonitors()
+    }
+
+    private func removeMonitors() {
         if let m = mouseMonitor { NSEvent.removeMonitor(m); mouseMonitor = nil }
         if let m = keyMonitor { NSEvent.removeMonitor(m); keyMonitor = nil }
         if let m = localKeyMonitor { NSEvent.removeMonitor(m); localKeyMonitor = nil }

@@ -1,117 +1,119 @@
 # Imperator Dock Folders
 
-macOS-app (Swift/SwiftUI/AppKit) som skapar anpassade appmappar i Dock. Minimum macOS 14, ingen App Sandbox.
+macOS app (Swift/SwiftUI/AppKit) that creates custom app folder shortcuts in the Dock. Minimum macOS 14, no App Sandbox.
 
-## Arkitekturöversikt
+## Architecture overview
 
-Appen skapar "folder"-mappar i `~/Library/Application Support/DockFolders/`. Varje mapp innehåller symlinks till appar. När en mapp läggs till i Dock skapas en liten launcher `.app`-bundle som placeras bland vanliga appar i Dockens `persistent-apps`-sektion. Klick på launcher-ikonen triggar en custom popup ovanför Dock (inte macOS inbyggda folder-grid).
+The app creates folders in `~/Library/Application Support/DockFolders/`. Each folder contains symlinks to apps. When a folder is added to the Dock, a small launcher `.app` bundle is created and placed among regular apps in the Dock's `persistent-apps` section. Clicking the launcher icon triggers a custom popup above the Dock (not macOS built-in folder grid).
 
-### Filsystemet som källa till sanning
+### File system as source of truth
 
 ```
 ~/Library/Application Support/DockFolders/
-  MappNamn/
+  FolderName/
     .gridconfig        <- JSON: {"columns": 3, "itemsPerPage": 9}
     .apporder          <- JSON: ["App1.app", "App2.app", ...]
     Safari.app         <- symlink -> /Applications/Safari.app
     Slack.app          <- symlink -> /Applications/Slack.app
   .launchers/
-    MappNamn.app/      <- genererad launcher-bundle
+    FolderName.app/    <- generated launcher bundle
 ```
 
-## Projektstruktur
+## Project structure
 
 ```
 DockFolders/DockFolders/
-  DockFoldersApp.swift      <- App entry point, AppDelegate, Darwin-lyssnare
+  DockFoldersApp.swift      <- App entry point, AppDelegate, Darwin listener
   Info.plist                <- CFBundleIconFile, URL scheme (dockfolders://)
   Models/
     DockFolder.swift        <- DockFolder + GridConfig structs
-    AppEntry.swift          <- AppEntry struct (ikon, URL, namn)
+    AppEntry.swift          <- AppEntry struct (icon, URL, name)
     AppearanceMode.swift    <- Enum: system/dark
   Services/
     FolderStore.swift       <- CRUD, grid config, reorder, dock toggle. DockFoldersPath enum.
-    DockController.swift    <- Läser/skriver com.apple.dock plist, persistent-apps
-    IconGenerator.swift     <- Genererar folder-ikoner (rounded rect + app grid)
-    LauncherGenerator.swift <- Skapar launcher .app-bundles med shell-script
-    AppDiscovery.swift      <- Söker /Applications + ~/Applications
-    AppearanceObserver.swift <- Lyssnar på dark/light mode-ändringar
+    DockController.swift    <- Reads/writes com.apple.dock plist, persistent-apps
+    IconGenerator.swift     <- Generates folder icons (rounded rect + app grid)
+    LauncherGenerator.swift <- Creates launcher .app bundles with shell script
+    AppDiscovery.swift      <- Scans /Applications + ~/Applications
+    AppearanceObserver.swift <- Listens for dark/light mode changes
   Views/
-    ContentView.swift       <- HSplitView med sidebar + detail
-    FolderListView.swift    <- Sidebar: lista av mappar
-    FolderDetailView.swift  <- App-grid med carousel, drag-reorder, grid settings
-    FolderPopupPanel.swift  <- Custom NSPanel popup med pil + visuell effekt
-    AppPickerView.swift     <- Sheet för att lägga till appar
-    MenuBarView.swift       <- MenuBarExtra-vy
-    SettingsView.swift      <- Inställningar (theme, menu bar)
-    SigilShape.swift        <- Imperator sigil SVG som SwiftUI Shape
+    ContentView.swift       <- HSplitView with sidebar + detail
+    FolderListView.swift    <- Sidebar: folder list
+    FolderDetailView.swift  <- App grid with carousel, drag-reorder, grid settings
+    FolderPopupPanel.swift  <- Custom NSPanel popup with arrow + visual effect
+    AppPickerView.swift     <- Sheet for adding apps
+    MenuBarView.swift       <- MenuBarExtra view
+    SettingsView.swift      <- Settings (theme, menu bar)
+    SigilShape.swift        <- Imperator sigil SVG as SwiftUI Shape
   Resources/
-    Assets.xcassets/        <- App icon (alla storlekar)
-    AppIcon.icns            <- .icns-fil för Finder-visning
+    Assets.xcassets/        <- App icon (all sizes)
+    AppIcon.icns            <- .icns file for Finder display
 ```
 
-## Nyckelmekanismer
+## Key mechanisms
 
 ### IPC: Launcher -> App
 
-1. Launcher-script (`LauncherGenerator.swift`) körs vid Dock-klick
-2. Scriptet fångar musposition via CoreGraphics Python-bridge
-3. Skriver mappnamn + muskoordinater till `/tmp/dockfolders_open`
-4. Om appen inte kör: startar den med `open -g -b com.dockfolders.app --args --background`
-5. Skickar Darwin-notification via `notifyutil -p com.dockfolders.open`
-6. AppDelegate lyssnar med `CFNotificationCenterGetDarwinNotifyCenter()`
-7. Läser `/tmp/dockfolders_open`, öppnar popup vid musposition
+1. Launcher script (`LauncherGenerator.swift`) runs on Dock click
+2. Script captures mouse position via CoreGraphics Python bridge
+3. Writes folder name + mouse coordinates to `/tmp/dockfolders_open`
+4. If app is not running: launches it with `open -g -b com.dockfolders.app --args --background`
+5. Sends Darwin notification via `notifyutil -p com.dockfolders.open`
+6. AppDelegate listens with `CFNotificationCenterGetDarwinNotifyCenter()`
+7. Reads `/tmp/dockfolders_open`, opens popup at mouse position
 
-### Dock-integration (`DockController.swift`)
+### Dock integration (`DockController.swift`)
 
-- Placerar launchers i `persistent-apps` (inte `persistent-others`)
-- Skriver direkt till `com.apple.dock` plist via `defaults write`
-- Hanterar URL-varianter med spaces och %20-encoding
-- `killall Dock` för att applicera ändringar
+- Places launchers in `persistent-apps` (not `persistent-others`)
+- Writes directly to `com.apple.dock` plist via `defaults write`
+- Handles URL variants with spaces and %20 encoding
+- `killall Dock` to apply changes
 
-### Popup-panel (`FolderPopupPanel.swift`)
+### Popup panel (`FolderPopupPanel.swift`)
 
-- `PopupPanel`: NSPanel-subklass med `canBecomeKey = true`
-- `PopupShape`: Custom SwiftUI Shape — rounded rect + triangulär pil nedtill
-- Pilen pekar mot dock-ikonen (X-position beräknas från musposition)
-- Panel positioneras vid `screen.origin.y + 75` (dockens höjd)
-- `VisualEffectBackground`: NSVisualEffectView med `.hudWindow`-material
-- Stängs vid klick utanför (global mouse monitor) eller Escape (key monitor)
+- `PopupPanel`: NSPanel subclass with `canBecomeKey = true`
+- `PopupShape`: Custom SwiftUI Shape — rounded rect + triangular arrow at bottom
+- Arrow points at dock icon (X position calculated from mouse position)
+- Panel positioned at `screen.origin.y + 75` (dock height)
+- `VisualEffectBackground`: NSVisualEffectView with `.hudWindow` material
+- Dismissed on click outside (global mouse monitor) or Escape (key monitor)
 
-### Swipe/scroll-hantering
+### Swipe/scroll handling
 
-Trackpad-swipe navigerar en sida i taget. Implementerat på två ställen:
+Trackpad swipe navigates one page at a time. Implemented in two places:
 
 **Popup** (`PopupPanel.scrollWheel`):
-- Överskrider `scrollWheel(with:)` direkt i NSPanel (globala monitors fångar inte events i nonactivatingPanel)
-- Trackar `event.phase` (.began/.ended/.cancelled) och `momentumPhase`
-- Trigger en gång per gesture, ignorerar momentum
+- Overrides `scrollWheel(with:)` directly in NSPanel (global monitors don't capture events in nonactivatingPanel)
+- Tracks `event.phase` (.began/.ended/.cancelled) and `momentumPhase`
+- Triggers once per gesture, ignores momentum
 
-**Main app** (`ScrollWheelOverlay` i `FolderDetailView`):
-- NSViewRepresentable som wrappar en NSView med `scrollWheel`-override
-- Samma logik: en sida per gesture via phase-tracking
+**Main app** (`ScrollWheelOverlay` in `FolderDetailView`):
+- NSViewRepresentable wrapping an NSView with `scrollWheel` override
+- Same logic: one page per gesture via phase tracking
 
-### Ikon-generering (`IconGenerator.swift`)
+### Icon generation (`IconGenerator.swift`)
 
-- 1024x1024 canvas med 10% inset (transparent padding runt ikonen)
-- Rounded rect bakgrund (dark/light mode aware, 0.7/0.6 alpha)
-- App-ikoner renderas i grid inuti bakgrunden
-- Genererar ikon för både folder-katalogen och launcher .app-bundlen
-- `regenerateAllIcons()` uppdaterar alla folders
+- 1024x1024 canvas with ~10% inset (transparent padding around the icon)
+- Rounded rect background (dark/light mode aware, 0.85/0.75 alpha)
+- macOS-matching corner radius (22.37%)
+- Subtle border stroke (12px width, low alpha)
+- App icons rendered in grid inside background
+- Generates icon for both folder directory and launcher .app bundle
+- `regenerateAllIcons()` updates all folders
 
-### Auto-uppdatering av dock-ikoner
+### Auto-update of dock icons
 
-`FolderStore` anropar `IconGenerator.generateIcon()` + `DockController.refreshDock()` vid:
-- `saveGridConfig` — ändring av kolumner/items per page
-- `reorderApps` — ändring av app-ordning
-- `addApp` / `removeApp` — lägga till/ta bort appar
-- `renameFolder` — byte av mappnamn
+`FolderStore` calls `IconGenerator.generateIcon()` + `DockController.refreshDock()` on:
+- `saveGridConfig` — column/items per page change
+- `reorderApps` — app order change
+- `addApp` / `removeApp` — adding/removing apps
+- `renameFolder` — folder rename
 
-Manuell "Update Icon"-knapp finns i GridSettingsBar (↻-ikon).
+Manual "Update Icon" button in GridSettingsBar (spin icon with rubberband animation).
 
-## Build och deploy
+## Build and deploy
 
-### Bygga
+### Build
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
@@ -119,67 +121,66 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   -scheme DockFolders -configuration Release build
 ```
 
-### Exportera till Applications
+### Export to Applications
 
 ```bash
-cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/DockFolders.app /Applications/
-codesign --sign - --force --deep /Applications/DockFolders.app
+cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/DockFolders.app "/Applications/Imperator Dock Folders.app"
+codesign --sign - --force --deep "/Applications/Imperator Dock Folders.app"
 ```
 
-Appen visas som "Imperator Dock Folders" i Finder (via `CFBundleDisplayName`).
-Filen heter `/Applications/Imperator Dock Folders.app` (manuellt omdöpt).
+The app shows as "Imperator Dock Folders" in Finder (via `CFBundleDisplayName`).
 
-### Ad-hoc kodsignering
+### Ad-hoc code signing
 
-Build phase "Code Sign" i Xcode-projektet kör:
+Build phase "Code Sign" in the Xcode project runs:
 ```
 codesign --sign - --force --deep "${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app"
 ```
-Utan detta blockerar Gatekeeper appen som "damaged" vid AirDrop etc.
+Without this, Gatekeeper blocks the app as "damaged" when transferred via AirDrop etc.
 
-## Viktiga designbeslut
+## Key design decisions
 
-1. **Symlinks, inte Finder aliases** — enklare att skapa/hantera programmatiskt
-2. **HSplitView istället för NavigationSplitView** — ger full kontroll över toolbar-placement
-3. **persistent-apps istället för persistent-others** — folder-ikoner blandas med vanliga appar
-4. **Darwin notifications istället för URL scheme** — fungerar även utan running app
-5. **Launcher auto-startar appen** — `pgrep` + `open -g -b` i shell-scriptet
-6. **Manuell Update Icon-knapp** — `applicationWillTerminate` hinner inte köra ikongenerering
+1. **Symlinks, not Finder aliases** — easier to create/manage programmatically
+2. **HSplitView instead of NavigationSplitView** — full control over toolbar placement
+3. **persistent-apps instead of persistent-others** — folder icons mixed with regular apps
+4. **Darwin notifications instead of URL scheme** — works even without running app
+5. **Launcher auto-starts the app** — `pgrep` + `open -g -b` in the shell script
+6. **Manual Update Icon button** — `applicationWillTerminate` doesn't have time to run icon generation
 
 ## TODO v2
 
-### 1. Smidigare popup-upplevelse
-Undersök om popup-panelen kan öppnas snabbare/smoothare. Idag tar det ~0.5s från klick till synlig popup. Möjliga förbättringar:
-- Pre-loada folder-data vid app-start istället för `store.reload()` vid varje popup
-- Minska latensen i Darwin notification → panel-visning
-- Snabbare icon-laddning (cacha NSImage-instanser)
-- Profilera `FolderPopupController.show()` för att hitta flaskhalsar
+### 1. Smoother popup experience
+Investigate if the popup panel can open faster/smoother. Currently takes ~0.5s from click to visible popup. Possible improvements:
+- Pre-load folder data at app start instead of `store.reload()` on every popup
+- Reduce latency in Darwin notification -> panel display
+- Faster icon loading (cache NSImage instances)
+- Profile `FolderPopupController.show()` to find bottlenecks
 
-### 2. Popup ska stanna ovanför folder-ikonen i Dock
-Problem: Om användaren rör musen snabbt efter klick hamnar popup vid muspekaren istället för ovanför folder-ikonen. Orsak: musposition läses i launcher-scriptet, men det tar ~0.5s innan appen tar emot Darwin-notifikationen och visar panelen — under den tiden kan musen ha flyttats.
+### 2. Popup should stay above the folder icon in Dock
+Problem: If the user moves the mouse quickly after clicking, the popup appears at the cursor instead of above the folder icon. Cause: mouse position is read in the launcher script, but it takes ~0.5s before the app receives the Darwin notification and shows the panel — during that time the mouse may have moved.
 
-Möjliga lösningar:
-- Spara musposition vid klick-tillfället (redan görs i launcher-scriptet via CoreGraphics) — verifiera att denna position verkligen används och inte `NSEvent.mouseLocation` som fallback
-- Beräkna dock-ikonens fasta position istället för att använda musposition: läs Dock-plistens `persistent-apps` ordning + dockens storlek/position för att beräkna exakt X-koordinat
-- Alternativt: cacha senaste klickposition per folder och återanvänd om ny position kommer inom kort tid
+Possible solutions:
+- Save mouse position at click time (already done in launcher script via CoreGraphics) — verify this position is actually used and not `NSEvent.mouseLocation` as fallback
+- Calculate the dock icon's fixed position instead of using mouse position: read the Dock plist's `persistent-apps` order + dock size/position to calculate exact X coordinate
+- Alternative: cache the last click position per folder and reuse if a new position arrives within a short time
 
-Relevant kod:
-- `LauncherGenerator.swift` rad 42-43: scriptet skriver musposition till `/tmp/dockfolders_open`
-- `DockFoldersApp.swift` `handleDarwinNotification()`: läser filen och konverterar koordinater
-- `FolderPopupController.show()`: tar emot `mousePosition` och positionerar panelen
+Relevant code:
+- `LauncherGenerator.swift` line 42-43: script writes mouse position to `/tmp/dockfolders_open`
+- `DockFoldersApp.swift` `handleDarwinNotification()`: reads the file and converts coordinates
+- `FolderPopupController.show()`: receives `mousePosition` and positions the panel
 
-## Kända begränsningar
+## Known limitations
 
-- Launcher-scriptet använder Python3 för CoreGraphics muspositions-hämtning
-- `pgrep -xq DockFolders` matchar processnamnet — om `PRODUCT_NAME` ändras måste scriptet uppdateras
-- Bundle identifier `com.dockfolders.app` är hårdkodad i launcher-scriptet
-- Dock icon cache kan behöva `killall Dock` / `lsregister` för att uppdateras
-- `main`-branchen på GitLab är skyddad — force push kräver att man avskyddar den först
+- Launcher script uses Python3 for CoreGraphics mouse position capture
+- `pgrep -xq DockFolders` matches the process name — if `PRODUCT_NAME` changes, the script must be updated
+- Bundle identifier `com.dockfolders.app` is hardcoded in the launcher script
+- Dock icon cache may need `killall Dock` / `lsregister` to update
+- `main` branch on GitLab is protected — force push requires unprotecting it first
 
 ## Conventions
 
-- All UI-text på engelska
-- Commit messages på engelska
-- Kod-kommentarer och dokumentation på svenska
-- Ad-hoc kodsignering alltid vid build
-- Inga nya bibliotek/mönster — allt bygger på SwiftUI + AppKit
+- All UI text in English
+- Commit messages in English
+- Documentation in English
+- Ad-hoc code signing always on build
+- No new libraries/patterns — everything built on SwiftUI + AppKit

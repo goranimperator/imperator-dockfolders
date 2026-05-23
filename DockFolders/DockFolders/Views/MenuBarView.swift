@@ -7,7 +7,7 @@ struct MenuBarView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("DockFolders")
+                Text("Imperator Dock Folders")
                     .font(.headline)
                 Spacer()
                 Button(action: { showNewFolderSheet = true }) {

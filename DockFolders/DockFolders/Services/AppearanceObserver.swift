@@ -11,11 +11,11 @@ class AppearanceObserver: ObservableObject {
     func startObserving() {
         guard !started else { return }
         started = true
-        isDark = currentIsDark()
+        isDark = effectiveIsDark()
         observation = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             Task { @MainActor in
                 guard let self else { return }
-                let newValue = self.currentIsDark()
+                let newValue = self.effectiveIsDark()
                 if self.isDark != newValue {
                     self.isDark = newValue
                     self.regenerateIcons()
@@ -24,7 +24,21 @@ class AppearanceObserver: ObservableObject {
         }
     }
 
-    private func currentIsDark() -> Bool {
+    /// Recalculate isDark based on current appearanceMode setting and regenerate icons if changed.
+    func reapply() {
+        let newValue = effectiveIsDark()
+        if isDark != newValue {
+            isDark = newValue
+            regenerateIcons()
+        }
+    }
+
+    private func effectiveIsDark() -> Bool {
+        let mode = UserDefaults.standard.string(forKey: "appearanceMode") ?? AppearanceMode.system.rawValue
+        if mode == AppearanceMode.dark.rawValue {
+            return true
+        }
+        // system mode — follow actual system appearance
         guard NSApp != nil else { return false }
         return NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     }

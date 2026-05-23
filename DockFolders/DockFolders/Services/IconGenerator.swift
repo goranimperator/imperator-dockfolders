@@ -63,6 +63,10 @@ class IconGenerator {
     }
 
     private static func effectiveIsDark() -> Bool {
+        let mode = UserDefaults.standard.string(forKey: "appearanceMode") ?? AppearanceMode.system.rawValue
+        if mode == AppearanceMode.dark.rawValue {
+            return true
+        }
         guard NSApp != nil else { return false }
         let appearance = NSApp.effectiveAppearance
         return appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua

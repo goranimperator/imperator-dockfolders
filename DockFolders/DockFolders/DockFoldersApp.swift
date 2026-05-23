@@ -12,7 +12,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
             appearanceObserver.startObserving()
             setupDarwinListener()
             LauncherGenerator.updateAllLauncherScripts()
-            if !CommandLine.arguments.contains("--background") {
+            let showWindow = UserDefaults.standard.object(forKey: "showMainWindow") as? Bool ?? true
+            if showWindow && !CommandLine.arguments.contains("--background") {
                 showMainWindow()
             }
         }
@@ -131,9 +132,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
 @main
 struct DockFoldersApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @AppStorage("showMenuBarExtra") private var showMenuBarExtra: Bool = true
 
     var body: some Scene {
-        MenuBarExtra("DockFolders", systemImage: "square.grid.2x2") {
+        MenuBarExtra("Imperator Dock Folders", systemImage: "square.grid.2x2", isInserted: $showMenuBarExtra) {
             MenuBarView()
                 .environmentObject(appDelegate.store)
         }

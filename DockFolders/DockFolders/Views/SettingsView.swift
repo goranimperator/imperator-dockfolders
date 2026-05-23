@@ -13,11 +13,15 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.radioGroup)
+                .onChange(of: appearanceMode) {
+                    guard let delegate = NSApp.delegate as? AppDelegate else { return }
+                    delegate.appearanceObserver.reapply()
+                }
             }
 
             Section("Window") {
                 Toggle("Show in menu bar", isOn: $showMenuBarExtra)
-                Toggle("Show main window", isOn: $showMainWindow)
+                Toggle("Show main window on launch", isOn: $showMainWindow)
             }
         }
         .formStyle(.grouped)

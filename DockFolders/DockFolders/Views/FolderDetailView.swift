@@ -542,7 +542,7 @@ struct DeleteBadge: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 21))
+                .font(.system(size: 21, weight: .bold))
                 .foregroundStyle(Color(red: 0.27, green: 0.0, blue: 0.0), Color(red: 1.0, green: 0.37, blue: 0.34))
                 .scaleEffect(isHovered ? 1.2 : 1.0)
                 .animation(.easeOut(duration: 0.15), value: isHovered)

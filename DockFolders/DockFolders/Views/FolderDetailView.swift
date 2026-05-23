@@ -9,6 +9,7 @@ struct FolderDetailView: View {
     @State private var editedName: String = ""
     @State private var showAppPicker = false
     @State private var showGridSettings = true
+    @FocusState private var isNameFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -47,6 +48,7 @@ struct FolderDetailView: View {
                 TextField("Folder name", text: $editedName, onCommit: commitRename)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 250)
+                    .focused($isNameFieldFocused)
                 Button("Done") { commitRename() }
             } else {
                 Text(folder.name)
@@ -55,6 +57,7 @@ struct FolderDetailView: View {
                 Button(action: {
                     editedName = folder.name
                     isEditing = true
+                    isNameFieldFocused = true
                 }) {
                     Image(systemName: "pencil")
                 }

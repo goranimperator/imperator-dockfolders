@@ -56,6 +56,7 @@ class FolderPopupController {
     private var currentFolderName: String?
     private var lastDismissedFolder: String?
     private var lastDismissTime: Date?
+    private var collapsedFrame: NSRect = .zero
 
     func show(folder: DockFolder, mousePosition: NSPoint, onEdit: (() -> Void)? = nil) {
         // Toggle: if same folder was just dismissed (dock icon clicked again), don't reopen
@@ -121,38 +122,25 @@ class FolderPopupController {
             }
         )
         panel.contentView = NSHostingView(rootView: popupView)
-        panel.setFrameOrigin(origin)
 
-        // Genie open: scale from bottom center
+        let fullFrame = NSRect(origin: origin, size: NSSize(width: panelWidth, height: panelHeight))
+        let collapsedFrame = NSRect(
+            x: origin.x + panelWidth / 2 - 20,
+            y: origin.y,
+            width: 40,
+            height: 10
+        )
+
+        self.collapsedFrame = collapsedFrame
+        panel.setFrame(collapsedFrame, display: false)
         panel.alphaValue = 0
-        if let contentView = panel.contentView {
-            contentView.wantsLayer = true
-            if let layer = contentView.layer {
-                let oldAnchor = layer.anchorPoint
-                let newAnchor = CGPoint(x: 0.5, y: 1.0)
-                layer.anchorPoint = newAnchor
-                layer.position = CGPoint(
-                    x: layer.position.x + (newAnchor.x - oldAnchor.x) * layer.bounds.width,
-                    y: layer.position.y + (newAnchor.y - oldAnchor.y) * layer.bounds.height
-                )
-
-                let scaleFrom = CATransform3DMakeScale(0.2, 0.08, 1)
-                let anim = CABasicAnimation(keyPath: "transform")
-                anim.fromValue = scaleFrom
-                anim.toValue = CATransform3DIdentity
-                anim.duration = 0.25
-                anim.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
-                layer.transform = CATransform3DIdentity
-                layer.add(anim, forKey: "genieOpen")
-            }
-        }
-
         panel.orderFrontRegardless()
         panel.makeKey()
 
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.15
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            ctx.duration = 0.25
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
+            panel.animator().setFrame(fullFrame, display: true)
             panel.animator().alphaValue = 1
         }
 
@@ -215,22 +203,12 @@ class FolderPopupController {
         lastDismissTime = Date()
 
         let panelRef = p
-
-        if let layer = panelRef.contentView?.layer {
-            let scaleTo = CATransform3DMakeScale(0.2, 0.08, 1)
-            let anim = CABasicAnimation(keyPath: "transform")
-            anim.fromValue = CATransform3DIdentity
-            anim.toValue = scaleTo
-            anim.duration = 0.18
-            anim.timingFunction = CAMediaTimingFunction(controlPoints: 0.7, 0, 0.84, 0)
-            anim.fillMode = .forwards
-            anim.isRemovedOnCompletion = false
-            layer.add(anim, forKey: "genieClose")
-        }
+        let target = collapsedFrame
 
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.18
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.7, 0, 0.84, 0)
+            panelRef.animator().setFrame(target, display: true)
             panelRef.animator().alphaValue = 0
         }, completionHandler: {
             panelRef.close()

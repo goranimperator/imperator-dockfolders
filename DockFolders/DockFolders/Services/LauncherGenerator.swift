@@ -37,9 +37,10 @@ class LauncherGenerator {
         let plistURL = contentsURL.appendingPathComponent("Info.plist")
         (plist as NSDictionary).write(to: plistURL, atomically: true)
 
+        let mouseposPath = launchersURL.appendingPathComponent("mousepos").path
         let script = """
         #!/bin/bash
-        MOUSE=$(/usr/bin/python3 -c "from Quartz.CoreGraphics import CGEventGetLocation, CGEventCreate; e = CGEventCreate(None); l = CGEventGetLocation(e); print(f'{l.x:.0f}\\n{l.y:.0f}')" 2>/dev/null)
+        MOUSE=$("\(mouseposPath)" 2>/dev/null)
         printf '%s\\n%s' "\(name)" "$MOUSE" > /tmp/dockfolders_open
         if ! /usr/bin/pgrep -xq DockFolders; then
           /usr/bin/open -g -b com.dockfolders.app --args --background
@@ -83,5 +84,41 @@ class LauncherGenerator {
         if !fm.fileExists(atPath: launchersURL.path) {
             try? fm.createDirectory(at: launchersURL, withIntermediateDirectories: true)
         }
+    }
+
+    static func ensureMouseposHelper() {
+        let fm = FileManager.default
+        let helperURL = launchersURL.appendingPathComponent("mousepos")
+        guard !fm.fileExists(atPath: helperURL.path) else { return }
+
+        ensureLaunchersDirectory()
+
+        let source = """
+        import CoreGraphics
+        let event = CGEvent(source: nil)
+        let location = event?.location ?? .zero
+        print(String(format: "%.0f", location.x))
+        print(String(format: "%.0f", location.y))
+        """
+
+        let tmpSource = fm.temporaryDirectory.appendingPathComponent("mousepos.swift")
+        try? source.write(to: tmpSource, atomically: true, encoding: .utf8)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/swiftc")
+        process.arguments = ["-O", "-o", helperURL.path, tmpSource.path]
+        try? process.run()
+        process.waitUntilExit()
+
+        if process.terminationStatus == 0 {
+            // Ad-hoc sign to avoid Gatekeeper delays
+            let sign = Process()
+            sign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            sign.arguments = ["--sign", "-", "--force", helperURL.path]
+            try? sign.run()
+            sign.waitUntilExit()
+        }
+
+        try? fm.removeItem(at: tmpSource)
     }
 }

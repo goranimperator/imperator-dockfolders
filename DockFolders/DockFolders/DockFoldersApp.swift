@@ -11,6 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         Task { @MainActor in
             appearanceObserver.startObserving()
             setupDarwinListener()
+            LauncherGenerator.ensureMouseposHelper()
             LauncherGenerator.updateAllLauncherScripts()
             let showWindow = UserDefaults.standard.object(forKey: "showMainWindow") as? Bool ?? true
             if showWindow && !CommandLine.arguments.contains("--background") {

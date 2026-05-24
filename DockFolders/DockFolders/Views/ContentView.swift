@@ -51,7 +51,7 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showNewFolderSheet) {
-            NewFolderSheet(isPresented: $showNewFolderSheet)
+            NewFolderSheet(isPresented: $showNewFolderSheet, selectedFolder: $selectedFolder)
         }
         .onChange(of: store.folders) { _, newFolders in
             if let sel = selectedFolder {
@@ -66,6 +66,7 @@ struct ContentView: View {
 
 struct NewFolderSheet: View {
     @Binding var isPresented: Bool
+    var selectedFolder: Binding<DockFolder?>?
     @EnvironmentObject var store: FolderStore
     @State private var name = ""
     @State private var errorMessage: String?
@@ -98,8 +99,10 @@ struct NewFolderSheet: View {
     }
 
     private func create() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            try store.createFolder(name: name)
+            try store.createFolder(name: trimmed)
+            selectedFolder?.wrappedValue = store.folders.first { $0.name == trimmed }
             isPresented = false
         } catch {
             errorMessage = "Could not create folder: \(error.localizedDescription)"

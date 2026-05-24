@@ -11,8 +11,7 @@ struct ContentView: View {
         HSplitView {
             if showSidebar {
                 VStack(spacing: 0) {
-                    HStack(spacing: 8) {
-                        SigilView(size: 13)
+                    HStack {
                         Text("Imperator Dock Folders")
                             .font(.system(size: 13, weight: .semibold))
                         Spacer()

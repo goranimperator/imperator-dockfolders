@@ -7,6 +7,7 @@ struct FolderListView: View {
     @State private var editingFolder: DockFolder?
     @State private var editedName: String = ""
     @State private var hoveredFolder: String?
+    @FocusState private var isRenameFieldFocused: Bool
 
     var body: some View {
         List(selection: $selectedFolder) {
@@ -24,6 +25,7 @@ struct FolderListView: View {
                             commitRename(folder)
                         })
                         .textFieldStyle(.roundedBorder)
+                        .focused($isRenameFieldFocused)
                     } else {
                         VStack(alignment: .leading) {
                             Text(folder.name)
@@ -46,6 +48,9 @@ struct FolderListView: View {
                             Button(action: {
                                 editedName = folder.name
                                 editingFolder = folder
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    isRenameFieldFocused = true
+                                }
                             }) {
                                 Image(systemName: "pencil.circle")
                                     .font(.system(size: 14))
@@ -96,9 +101,8 @@ struct FolderListView: View {
         }
         .listStyle(.sidebar)
         .frame(minWidth: 200)
-        .onTapGesture {
-            // Commit any in-progress rename when clicking elsewhere
-            if let folder = editingFolder {
+        .onChange(of: isRenameFieldFocused) { _, focused in
+            if !focused, let folder = editingFolder {
                 commitRename(folder)
             }
         }

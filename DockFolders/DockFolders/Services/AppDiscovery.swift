@@ -8,6 +8,7 @@ class AppDiscovery {
 
         let searchPaths = [
             URL(fileURLWithPath: "/Applications"),
+            URL(fileURLWithPath: "/System/Applications"),
             fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications")
         ]
 

@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var selectedFolder: DockFolder?
     @State private var showNewFolderSheet = false
     @State private var showSidebar = true
+    @State private var addFolderHovered = false
 
     var body: some View {
         HSplitView {
@@ -22,6 +23,25 @@ struct ContentView: View {
                     Divider()
 
                     FolderListView(selectedFolder: $selectedFolder)
+
+                    Divider()
+
+                    HStack {
+                        Button(action: { showNewFolderSheet = true }) {
+                            Label("Add Folder", systemImage: "plus.circle.fill")
+                                .font(.system(size: 13))
+                                .opacity(addFolderHovered ? 1.0 : 0.5)
+                        }
+                        .buttonStyle(.borderless)
+                        .onHover { h in
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                addFolderHovered = h
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
                 }
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 300)
             }
@@ -38,11 +58,6 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Spacer()
-            }
-            ToolbarItem(placement: .automatic) {
-                Button(action: { showNewFolderSheet = true }) {
-                    Label("New Folder", systemImage: "plus")
-                }
             }
             ToolbarItem(placement: .automatic) {
                 Button(action: { withAnimation { showSidebar.toggle() } }) {

@@ -87,7 +87,7 @@ class FolderStore: ObservableObject {
             return
         }
 
-        folders = contents
+        let allFolders = contents
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
             .map { folderURL in
                 let name = folderURL.lastPathComponent
@@ -96,7 +96,21 @@ class FolderStore: ObservableObject {
                 let gridConfig = Self.loadGridConfig(in: folderURL)
                 return DockFolder(id: folderURL.path, name: name, apps: apps, isInDock: isInDock, gridConfig: gridConfig)
             }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+
+        let savedOrder = loadFolderOrder()
+        if savedOrder.isEmpty {
+            folders = allFolders.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } else {
+            var ordered: [DockFolder] = []
+            var remaining = allFolders
+            for name in savedOrder {
+                if let idx = remaining.firstIndex(where: { $0.name == name }) {
+                    ordered.append(remaining.remove(at: idx))
+                }
+            }
+            ordered.append(contentsOf: remaining.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending })
+            folders = ordered
+        }
     }
 
     private func loadApps(in folderURL: URL) -> [AppEntry] {
@@ -165,6 +179,28 @@ class FolderStore: ObservableObject {
         }
 
         reload()
+    }
+
+    func reorderFolders(to newOrder: [DockFolder]) {
+        folders = newOrder
+        saveFolderOrder()
+    }
+
+    private func loadFolderOrder() -> [String] {
+        let file = Self.baseURL.appendingPathComponent(".folderorder")
+        guard let data = try? Data(contentsOf: file),
+              let list = try? JSONDecoder().decode([String].self, from: data) else {
+            return []
+        }
+        return list
+    }
+
+    private func saveFolderOrder() {
+        let file = Self.baseURL.appendingPathComponent(".folderorder")
+        let names = folders.map { $0.name }
+        if let data = try? JSONEncoder().encode(names) {
+            try? data.write(to: file)
+        }
     }
 
     func reorderApps(in folder: DockFolder, to newOrder: [AppEntry]) {

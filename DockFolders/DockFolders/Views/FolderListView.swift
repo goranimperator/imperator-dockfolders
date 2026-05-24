@@ -10,9 +10,14 @@ struct FolderListView: View {
 
     var body: some View {
         List(selection: $selectedFolder) {
-            ForEach(store.folders) { folder in
-                HStack {
+            ForEach(Array(store.folders.enumerated()), id: \.element.id) { index, folder in
+                HStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.tertiary)
+
                     Image(systemName: "folder.fill")
+                        .font(.system(size: 14))
                         .foregroundStyle(folder.isInDock ? Color.accentColor : .secondary)
                     if editingFolder == folder {
                         TextField("Folder name", text: $editedName, onCommit: {
@@ -22,36 +27,48 @@ struct FolderListView: View {
                     } else {
                         VStack(alignment: .leading) {
                             Text(folder.name)
-                                .fontWeight(.medium)
-                            Text("\(folder.apps.count) apps")
-                                .font(.caption)
+                                .font(.system(size: 14))
                                 .foregroundStyle(.secondary)
+                            Text("\(folder.apps.count) apps")
+                                .fontWeight(.medium)
                         }
                     }
                     Spacer()
-                    if hoveredFolder == folder.id && editingFolder != folder {
-                        Button(action: {
-                            editedName = folder.name
-                            editingFolder = folder
-                        }) {
-                            Image(systemName: "pencil.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Rename")
+                    if editingFolder != folder {
+                        let isHovered = hoveredFolder == folder.id
+                        HStack(spacing: isHovered ? 6 : 0) {
+                            if folder.isInDock {
+                                Image(systemName: "dock.rectangle")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
+                            }
 
-                        Button(action: { folderToDelete = folder }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.secondary)
+                            Button(action: {
+                                editedName = folder.name
+                                editingFolder = folder
+                            }) {
+                                Image(systemName: "pencil.circle")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Rename")
+                            .frame(width: isHovered ? nil : 0)
+                            .opacity(isHovered ? 1 : 0)
+                            .clipped()
+
+                            Button(action: { folderToDelete = folder }) {
+                                Image(systemName: "xmark.circle")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Delete")
+                            .frame(width: isHovered ? nil : 0)
+                            .opacity(isHovered ? 1 : 0)
+                            .clipped()
                         }
-                        .buttonStyle(.borderless)
-                        .help("Delete")
-                    } else if folder.isInDock && editingFolder != folder {
-                        Image(systemName: "dock.rectangle")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        .animation(.easeInOut(duration: 0.15), value: isHovered)
                     }
                 }
                 .onHover { hovering in
@@ -67,6 +84,14 @@ struct FolderListView: View {
                         folderToDelete = folder
                     }
                 }
+                if index < store.folders.count - 1 {
+                    Divider()
+                }
+            }
+            .onMove { from, to in
+                var reordered = store.folders
+                reordered.move(fromOffsets: from, toOffset: to)
+                store.reorderFolders(to: reordered)
             }
         }
         .listStyle(.sidebar)

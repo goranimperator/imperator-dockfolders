@@ -6,11 +6,17 @@ class AppDiscovery {
         let fm = FileManager.default
         var apps: [URL] = []
 
-        let searchPaths = [
+        var searchPaths = [
             URL(fileURLWithPath: "/Applications"),
             URL(fileURLWithPath: "/System/Applications"),
             fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications")
         ]
+
+        // Include apps bundled inside Xcode (Icon Composer, Instruments, etc.)
+        let xcodeApps = URL(fileURLWithPath: "/Applications/Xcode.app/Contents/Applications")
+        if fm.fileExists(atPath: xcodeApps.path) {
+            searchPaths.append(xcodeApps)
+        }
 
         for searchPath in searchPaths {
             guard let enumerator = fm.enumerator(

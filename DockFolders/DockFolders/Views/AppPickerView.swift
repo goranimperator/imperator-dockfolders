@@ -34,6 +34,9 @@ struct AppPickerView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
                 Text("Add Apps")
                     .font(.headline)
                 Spacer()

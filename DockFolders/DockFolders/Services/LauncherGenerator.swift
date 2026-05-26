@@ -147,12 +147,20 @@ class LauncherGenerator {
         process.waitUntilExit()
 
         if process.terminationStatus == 0 {
-            // Ad-hoc sign to avoid Gatekeeper delays
+            // Sign with stable identity (falls back to ad-hoc if certificate not found)
             let sign = Process()
             sign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-            sign.arguments = ["--sign", "-", "--force", helperURL.path]
+            sign.arguments = ["--sign", "Imperator Dev", "--force", helperURL.path]
             try? sign.run()
             sign.waitUntilExit()
+            if sign.terminationStatus != 0 {
+                // Fallback to ad-hoc
+                let adHoc = Process()
+                adHoc.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+                adHoc.arguments = ["--sign", "-", "--force", helperURL.path]
+                try? adHoc.run()
+                adHoc.waitUntilExit()
+            }
         }
 
         try? fm.removeItem(at: tmpSource)

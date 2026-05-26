@@ -11,8 +11,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         Task { @MainActor in
             appearanceObserver.startObserving()
             setupDarwinListener()
-            LauncherGenerator.ensureMouseposHelper()
-            LauncherGenerator.updateAllLauncherScripts()
+            setupWakeListener()
+            Task.detached(priority: .utility) {
+                LauncherGenerator.ensureMouseposHelper()
+                LauncherGenerator.updateAllLauncherScripts()
+            }
             let showWindow = UserDefaults.standard.object(forKey: "showMainWindow") as? Bool ?? true
             if showWindow && !CommandLine.arguments.contains("--background") {
                 showMainWindow()
@@ -97,6 +100,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         )
     }
 
+    private func setupWakeListener() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.store.reload()
+        }
+    }
+
     private func handleDarwinNotification() {
         let path = "/tmp/dockfolders_open"
         guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { return }
@@ -118,7 +131,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
     }
 
     private func openFolderPopup(named folderName: String, mousePosition: NSPoint? = nil) {
-        guard let folder = store.loadFolder(named: folderName) else { return }
+        guard let folder = store.folders.first(where: { $0.name == folderName })
+                ?? store.loadFolder(named: folderName) else { return }
         FolderPopupController.shared.show(
             folder: folder,
             mousePosition: mousePosition ?? NSEvent.mouseLocation,

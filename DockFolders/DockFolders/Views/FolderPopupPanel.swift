@@ -50,6 +50,7 @@ class FolderPopupController {
     static let shared = FolderPopupController()
 
     private var panel: PopupPanel?
+    private var cachedPanel: PopupPanel?
     private var mouseMonitor: Any?
     private var keyMonitor: Any?
     private var localKeyMonitor: Any?
@@ -83,19 +84,23 @@ class FolderPopupController {
         let panelWidth = gridWidth + hPad * 2
         let panelHeight = gridHeight + 40 + (hasPages ? 28 : 12) + arrowH
 
-        let panel = PopupPanel(
-            contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.isFloatingPanel = true
-        panel.level = .popUpMenu
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = true
-        panel.animationBehavior = .alertPanel
-        panel.acceptsMouseMovedEvents = true
+        let panel = cachedPanel ?? {
+            let p = PopupPanel(
+                contentRect: .zero,
+                styleMask: [.borderless, .nonactivatingPanel],
+                backing: .buffered,
+                defer: true
+            )
+            p.isFloatingPanel = true
+            p.level = .popUpMenu
+            p.backgroundColor = .clear
+            p.isOpaque = false
+            p.hasShadow = true
+            p.animationBehavior = .alertPanel
+            p.acceptsMouseMovedEvents = true
+            return p
+        }()
+        panel.setContentSize(NSSize(width: panelWidth, height: panelHeight))
 
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mousePosition) })
             ?? NSScreen.main ?? NSScreen.screens[0]
@@ -184,15 +189,18 @@ class FolderPopupController {
         lastDismissTime = Date()
 
         p.orderOut(nil)
-        p.close()
 
+        cachedPanel = p
         panel = nil
         currentFolderName = nil
         removeMonitors()
     }
 
     private func closePanel() {
-        if let p = panel { p.close() }
+        if let p = panel {
+            p.orderOut(nil)
+            cachedPanel = p
+        }
         panel = nil
         currentFolderName = nil
         removeMonitors()

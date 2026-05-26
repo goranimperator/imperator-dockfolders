@@ -89,7 +89,8 @@ struct FolderListView: View {
                         folderToDelete = folder
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 8)
+                .listRowSeparator(.hidden)
             }
             .onMove { from, to in
                 var reordered = store.folders

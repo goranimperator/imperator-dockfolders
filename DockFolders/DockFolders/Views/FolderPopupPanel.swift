@@ -143,7 +143,7 @@ class FolderPopupController {
         // Arrow tip = iconCenter.y + 26 (half icon + 2px gap)
         let arrowTipY: CGFloat
         if let iconY = iconCenterY {
-            arrowTipY = iconY + 24
+            arrowTipY = iconY + 25
         } else {
             arrowTipY = screen.frame.origin.y + 60
         }

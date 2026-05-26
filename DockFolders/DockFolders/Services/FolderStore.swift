@@ -73,7 +73,7 @@ class FolderStore: ObservableObject {
         guard fm.fileExists(atPath: folderURL.path) else { return nil }
         let apps = loadApps(in: folderURL)
         let isInDock = DockController.shared.isFolderInDock(folderURL)
-        let gridConfig = Self.loadGridConfig(in: folderURL)
+        let gridConfig = DockFoldersPath.loadGridConfig(in: folderURL)
         return DockFolder(id: folderURL.path, name: name, apps: apps, isInDock: isInDock, gridConfig: gridConfig)
     }
 
@@ -94,7 +94,7 @@ class FolderStore: ObservableObject {
                 let name = folderURL.lastPathComponent
                 let apps = loadApps(in: folderURL)
                 let isInDock = DockController.shared.isFolderInDock(folderURL)
-                let gridConfig = Self.loadGridConfig(in: folderURL)
+                let gridConfig = DockFoldersPath.loadGridConfig(in: folderURL)
                 return DockFolder(id: folderURL.path, name: name, apps: apps, isInDock: isInDock, gridConfig: gridConfig)
             }
 
@@ -162,10 +162,6 @@ class FolderStore: ObservableObject {
         if let data = try? JSONEncoder().encode(names) {
             try? data.write(to: orderFile)
         }
-    }
-
-    static func loadGridConfig(in folderURL: URL) -> GridConfig {
-        DockFoldersPath.loadGridConfig(in: folderURL)
     }
 
     func saveGridConfig(for folder: DockFolder, config: GridConfig) {

@@ -17,10 +17,6 @@ struct AppEntry: Identifiable, Hashable {
         return icon
     }
 
-    static func clearIconCache() {
-        iconCache.removeAll()
-    }
-
     init(url: URL) {
         self.url = url
         self.localURL = url

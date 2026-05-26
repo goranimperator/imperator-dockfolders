@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 class DockController {
     static let shared = DockController()
 
@@ -124,20 +125,12 @@ class DockController {
     }
 
     private func writeDockSection(_ section: String, entries: [[String: Any]]) {
-        let clearProcess = Process()
-        clearProcess.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        clearProcess.arguments = ["write", "com.apple.dock", section, "-array"]
-        try? clearProcess.run()
-        clearProcess.waitUntilExit()
-
-        for entry in entries {
-            guard let entryData = try? PropertyListSerialization.data(fromPropertyList: entry, format: .xml, options: 0),
-                  let entryString = String(data: entryData, encoding: .utf8) else { continue }
-            let addProcess = Process()
-            addProcess.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-            addProcess.arguments = ["write", "com.apple.dock", section, "-array-add", entryString]
-            try? addProcess.run()
-            addProcess.waitUntilExit()
-        }
+        guard let data = try? PropertyListSerialization.data(fromPropertyList: entries, format: .xml, options: 0),
+              let xmlString = String(data: data, encoding: .utf8) else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
+        process.arguments = ["write", "com.apple.dock", section, xmlString]
+        try? process.run()
+        process.waitUntilExit()
     }
 }

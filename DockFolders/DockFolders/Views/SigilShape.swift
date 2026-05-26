@@ -37,15 +37,20 @@ struct SigilView: View {
     </svg>
     """
 
-    private var nsImage: NSImage? {
-        let fillColor = colorScheme == .dark ? "#FFFFFF" : "#000000"
-        let svg = Self.svgTemplate.replacingOccurrences(of: "FILL_COLOR", with: fillColor)
-        guard let data = svg.data(using: .utf8) else { return nil }
-        return NSImage(data: data)
+    private static var imageCache: [String: NSImage] = [:]
+
+    private static func cachedImage(for fillColor: String) -> NSImage? {
+        if let cached = imageCache[fillColor] { return cached }
+        let svg = svgTemplate.replacingOccurrences(of: "FILL_COLOR", with: fillColor)
+        guard let data = svg.data(using: .utf8),
+              let image = NSImage(data: data) else { return nil }
+        imageCache[fillColor] = image
+        return image
     }
 
     var body: some View {
-        if let image = nsImage {
+        let fillColor = colorScheme == .dark ? "#FFFFFF" : "#000000"
+        if let image = Self.cachedImage(for: fillColor) {
             Image(nsImage: image)
                 .resizable()
                 .frame(width: size, height: size)

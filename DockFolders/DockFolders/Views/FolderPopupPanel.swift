@@ -6,8 +6,9 @@ struct PopupShape: Shape {
     let arrowX: CGFloat
 
     func path(in rect: CGRect) -> Path {
-        let arrowH: CGFloat = 12
-        let arrowW: CGFloat = 22
+        // Match macOS dock tooltip arrow style
+        let arrowH: CGFloat = 5
+        let arrowW: CGFloat = 12
         let r = cornerRadius
         let bodyH = rect.height - arrowH
         let tipX = min(max(arrowX, r + arrowW / 2 + 2), rect.width - r - arrowW / 2 - 2)
@@ -52,11 +53,14 @@ class FolderPopupController {
     private var panel: PopupPanel?
     private var cachedPanel: PopupPanel?
     private var mouseMonitor: Any?
+    private var mouseMoveMonitor: Any?
     private var keyMonitor: Any?
     private var localKeyMonitor: Any?
+    private var dismissTimer: Timer?
     private var currentFolderName: String?
     private var lastDismissedFolder: String?
     private var lastDismissTime: Date?
+    private var currentPanelWidth: CGFloat = 0
 
     func show(folder: DockFolder, mousePosition: NSPoint, onEdit: (() -> Void)? = nil) {
         // Toggle: if same folder was just dismissed (dock icon clicked again), don't reopen
@@ -76,45 +80,50 @@ class FolderPopupController {
         let cellH: CGFloat = 90
         let gridSpacing: CGFloat = 2
         let hPad: CGFloat = 16
+        let vPad: CGFloat = 16
         let hasPages = folder.apps.count > folder.gridConfig.itemsPerPage
-        let arrowH: CGFloat = 12
+        let arrowH: CGFloat = 5
+        let pageDotsH: CGFloat = hasPages ? 19 : 0  // 4 top + 7 circle + 8 bottom
 
         let gridWidth = CGFloat(cols) * cellW + CGFloat(cols - 1) * gridSpacing
         let gridHeight = CGFloat(rows) * cellH + CGFloat(rows - 1) * gridSpacing
         let panelWidth = gridWidth + hPad * 2
-        let panelHeight = gridHeight + 40 + (hasPages ? 28 : 12) + arrowH
+        let panelHeight = gridHeight + vPad * 2 + pageDotsH + arrowH
 
-        let panel = cachedPanel ?? {
+        let panel: PopupPanel
+        if let cached = cachedPanel {
+            panel = cached
+            cachedPanel = nil
+        } else {
             let p = PopupPanel(
                 contentRect: .zero,
                 styleMask: [.borderless, .nonactivatingPanel],
                 backing: .buffered,
-                defer: true
+                defer: false
             )
             p.isFloatingPanel = true
             p.level = .popUpMenu
             p.backgroundColor = .clear
             p.isOpaque = false
             p.hasShadow = true
-            p.animationBehavior = .alertPanel
+            p.animationBehavior = .none
             p.acceptsMouseMovedEvents = true
-            return p
-        }()
-        panel.setContentSize(NSSize(width: panelWidth, height: panelHeight))
+            panel = p
+        }
+
+        // Use AX icon position for initial placement (same as tracking)
+        let initialX: CGFloat
+        if let iconCenter = DockIconLocator.shared.iconCenter(forLauncherNamed: folder.name) {
+            initialX = iconCenter.x
+        } else {
+            initialX = mousePosition.x
+        }
 
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mousePosition) })
             ?? NSScreen.main ?? NSScreen.screens[0]
 
-        let dockHeight: CGFloat = 75
-        var origin = NSPoint(
-            x: mousePosition.x - panelWidth / 2,
-            y: screen.frame.origin.y + dockHeight
-        )
-
-        origin.x = max(screen.frame.origin.x + 4, min(origin.x, screen.frame.maxX - panelWidth - 4))
-        origin.y = max(screen.frame.origin.y + 4, min(origin.y, screen.frame.maxY - panelHeight - 4))
-
-        let arrowRelativeX = mousePosition.x - origin.x
+        // Arrow always centered
+        let arrowRelativeX = panelWidth / 2
 
         let popupView = FolderPopupView(
             folder: folder,
@@ -126,9 +135,30 @@ class FolderPopupController {
             }
         )
         panel.contentView = NSHostingView(rootView: popupView)
-        panel.setFrameOrigin(origin)
+
+        // Position: arrow tip ~3px above the macOS APP_NAME tooltip position.
+        // Default dock icons are ~48px, center ~24px from dock bottom.
+        // APP_NAME tooltip appears ~2px above icon top edge.
+        // Arrow tip target: iconCenter.y + 26 (half icon + 2px gap)
+        let dockHeight: CGFloat = 60
+        var origin = NSPoint(
+            x: initialX - panelWidth / 2,
+            y: screen.frame.origin.y + dockHeight
+        )
+
+        origin.x = max(screen.frame.origin.x + 4, min(origin.x, screen.frame.maxX - panelWidth - 4))
+        origin.y = max(screen.frame.origin.y + 4, min(origin.y, screen.frame.maxY - panelHeight - 4))
+
+        panel.setFrame(NSRect(origin: origin, size: NSSize(width: panelWidth, height: panelHeight)), display: true)
+        panel.alphaValue = 0
         panel.orderFrontRegardless()
         panel.makeKey()
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.12
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 1
+        }
 
         var scrollAccumX: CGFloat = 0
         var scrollAccumY: CGFloat = 0
@@ -168,10 +198,23 @@ class FolderPopupController {
         }
 
         currentFolderName = folder.name
+        currentPanelWidth = panelWidth
         self.panel = panel
 
         mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             self?.dismiss()
+        }
+
+        // Track mouse movement to follow dock icon position
+        mouseMoveMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+            self?.updatePanelPosition()
+        }
+
+        // Timer-based dismiss: check mouse position every 200ms (reliable even when Dock captures events)
+        dismissTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.checkMouseDismiss()
+            }
         }
         keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { self?.dismiss() }
@@ -180,6 +223,40 @@ class FolderPopupController {
             if event.keyCode == 53 { self?.dismiss() }
             return event
         }
+    }
+
+    private func updatePanelPosition() {
+        guard let panel = panel,
+              let folderName = currentFolderName,
+              let iconCenter = DockIconLocator.shared.iconCenter(forLauncherNamed: folderName)
+        else { return }
+
+        let screen = NSScreen.main ?? NSScreen.screens[0]
+        var newX = iconCenter.x - currentPanelWidth / 2
+        newX = max(screen.frame.origin.x + 4, min(newX, screen.frame.maxX - currentPanelWidth - 4))
+
+        var frame = panel.frame
+        frame.origin.x = newX
+        panel.setFrame(frame, display: false)
+    }
+
+    private func checkMouseDismiss() {
+        guard let panel = panel else { return }
+        let mouse = NSEvent.mouseLocation
+        let panelFrame = panel.frame
+
+        // Keep open if mouse is inside the popup panel (with small margin)
+        let expandedPanel = panelFrame.insetBy(dx: -8, dy: -8)
+        if expandedPanel.contains(mouse) { return }
+
+        // Keep open if mouse is in the dock area (below the panel)
+        if mouse.y < panelFrame.minY {
+            let screen = NSScreen.main ?? NSScreen.screens[0]
+            if mouse.y >= screen.frame.origin.y { return }
+        }
+
+        // Mouse is above the panel or far to the sides — dismiss
+        dismiss()
     }
 
     func dismiss() {
@@ -208,8 +285,10 @@ class FolderPopupController {
 
     private func removeMonitors() {
         if let m = mouseMonitor { NSEvent.removeMonitor(m); mouseMonitor = nil }
+        if let m = mouseMoveMonitor { NSEvent.removeMonitor(m); mouseMoveMonitor = nil }
         if let m = keyMonitor { NSEvent.removeMonitor(m); keyMonitor = nil }
         if let m = localKeyMonitor { NSEvent.removeMonitor(m); localKeyMonitor = nil }
+        dismissTimer?.invalidate(); dismissTimer = nil
     }
 }
 
@@ -238,12 +317,6 @@ struct FolderPopupView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(folder.name)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
-                .padding(.top, 14)
-                .padding(.bottom, 8)
-
             if pages.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "app.dashed")
@@ -272,23 +345,20 @@ struct FolderPopupView: View {
                         }
                     }
                     .padding(.top, 4)
-                    .padding(.bottom, 10)
-                } else {
-                    Spacer().frame(height: 10)
+                    .padding(.bottom, 8)
                 }
             }
-
-            Spacer().frame(height: 12)
         }
+        .padding(.vertical, 16)
         .background(
             ZStack {
                 VisualEffectBackground()
                 Color.black.opacity(0.1)
             }
-            .clipShape(PopupShape(cornerRadius: 14, arrowX: arrowX))
+            .clipShape(PopupShape(cornerRadius: 10, arrowX: arrowX))
         )
         .overlay(
-            PopupShape(cornerRadius: 14, arrowX: arrowX)
+            PopupShape(cornerRadius: 10, arrowX: arrowX)
                 .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
         )
         .clipped()
@@ -331,11 +401,11 @@ struct FolderPopupView: View {
     private func appCell(_ app: AppEntry) -> some View {
         let isHovered = hoveredApp == app.id
 
-        return VStack(spacing: 2) {
+        return VStack(spacing: 4) {
             Image(nsImage: app.icon)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 52, height: 52)
+                .frame(width: 48, height: 48)
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
                 .scaleEffect(isHovered ? 1.15 : 1.0)
 
@@ -344,9 +414,10 @@ struct FolderPopupView: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(isHovered ? 1.0 : 0.7))
-                .frame(maxWidth: 80)
-                .frame(height: 28)
+                .frame(maxWidth: 76, alignment: .top)
+                .frame(height: 26, alignment: .top)
         }
+        .padding(6)
         .frame(width: 88, height: 90)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)

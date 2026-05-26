@@ -78,6 +78,7 @@ class FolderStore: ObservableObject {
     }
 
     func reload() {
+        DockController.shared.invalidateDockCache()
         guard let contents = try? fm.contentsOfDirectory(
             at: Self.baseURL,
             includingPropertiesForKeys: [.isDirectoryKey],

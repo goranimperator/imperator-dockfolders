@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
             appearanceObserver.startObserving()
             setupDarwinListener()
             setupWakeListener()
+            DockIconLocator.shared.requestAccessIfNeeded()
             Task.detached(priority: .utility) {
                 LauncherGenerator.ensureMouseposHelper()
                 LauncherGenerator.updateAllLauncherScripts()
@@ -133,9 +134,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
     private func openFolderPopup(named folderName: String, mousePosition: NSPoint? = nil) {
         guard let folder = store.folders.first(where: { $0.name == folderName })
                 ?? store.loadFolder(named: folderName) else { return }
+
+        // Try exact dock icon position via Accessibility API, fall back to mouse position
+        let iconCenter = DockIconLocator.shared.iconCenter(forLauncherNamed: folderName)
+        let position = iconCenter ?? mousePosition ?? NSEvent.mouseLocation
+
         FolderPopupController.shared.show(
             folder: folder,
-            mousePosition: mousePosition ?? NSEvent.mouseLocation,
+            mousePosition: position,
             onEdit: { [weak self] in
                 self?.showMainWindow()
             }

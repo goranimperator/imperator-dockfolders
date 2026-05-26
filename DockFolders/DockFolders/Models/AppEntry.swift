@@ -8,12 +8,25 @@ struct AppEntry: Identifiable, Hashable {
     let localURL: URL
     let icon: NSImage
 
+    private static var iconCache: [String: NSImage] = [:]
+
+    private static func cachedIcon(forFile path: String) -> NSImage {
+        if let cached = iconCache[path] { return cached }
+        let icon = NSWorkspace.shared.icon(forFile: path)
+        iconCache[path] = icon
+        return icon
+    }
+
+    static func clearIconCache() {
+        iconCache.removeAll()
+    }
+
     init(url: URL) {
         self.url = url
         self.localURL = url
         self.name = url.deletingPathExtension().lastPathComponent
         self.id = url.path
-        self.icon = NSWorkspace.shared.icon(forFile: url.path)
+        self.icon = Self.cachedIcon(forFile: url.path)
     }
 
     init(localURL: URL, resolvedURL: URL) {
@@ -21,7 +34,7 @@ struct AppEntry: Identifiable, Hashable {
         self.url = resolvedURL
         self.name = resolvedURL.deletingPathExtension().lastPathComponent
         self.id = resolvedURL.path
-        self.icon = NSWorkspace.shared.icon(forFile: resolvedURL.path)
+        self.icon = Self.cachedIcon(forFile: resolvedURL.path)
     }
 
     var exists: Bool {

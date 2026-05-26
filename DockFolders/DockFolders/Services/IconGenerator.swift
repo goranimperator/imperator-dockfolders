@@ -75,43 +75,31 @@ class IconGenerator {
 
     private static func renderFolderIcon(appIcons: [NSImage], columns: Int, isDark: Bool) -> NSImage {
         let size: CGFloat = 1024
-        let inset: CGFloat = size * 0.10 - 2
         let image = NSImage(size: NSSize(width: size, height: size))
 
         image.lockFocus()
 
-        let bgRect = NSRect(x: inset, y: inset, width: size - inset * 2, height: size - inset * 2)
-        let bgSize = size - inset * 2
-        let cornerRadius: CGFloat = bgSize * 229 / 1024
-        let borderWidth: CGFloat = 12
-        let bgPath = NSBezierPath(roundedRect: bgRect, xRadius: cornerRadius, yRadius: cornerRadius)
+        // Fill entire canvas — macOS applies its own squircle mask to .app icons
+        let bgRect = NSRect(x: 0, y: 0, width: size, height: size)
 
         if isDark {
-            NSColor(red: 30/255, green: 30/255, blue: 30/255, alpha: 0.85).setFill()
+            NSColor(red: 30/255, green: 30/255, blue: 30/255, alpha: 1.0).setFill()
         } else {
-            NSColor(red: 245/255, green: 245/255, blue: 245/255, alpha: 0.75).setFill()
+            NSColor(red: 245/255, green: 245/255, blue: 245/255, alpha: 1.0).setFill()
         }
-        bgPath.fill()
-
-        if isDark {
-            NSColor(white: 1.0, alpha: 0.17).setStroke()
-        } else {
-            NSColor(white: 0.0, alpha: 0.12).setStroke()
-        }
-        bgPath.lineWidth = borderWidth
-        bgPath.stroke()
+        NSBezierPath(rect: bgRect).fill()
 
         if !appIcons.isEmpty {
             let rows = Int(ceil(Double(appIcons.count) / Double(columns)))
-            let padding: CGFloat = bgSize * 0.12
-            let spacing: CGFloat = bgSize * 0.04
-            let available = bgSize - padding * 2 - spacing * CGFloat(max(columns, rows) - 1)
+            let padding: CGFloat = size * 0.14
+            let spacing: CGFloat = size * 0.04
+            let available = size - padding * 2 - spacing * CGFloat(max(columns, rows) - 1)
             let cellSize = available / CGFloat(max(columns, rows))
 
             let totalGridWidth = CGFloat(columns) * cellSize + CGFloat(columns - 1) * spacing
             let totalGridHeight = CGFloat(rows) * cellSize + CGFloat(rows - 1) * spacing
-            let offsetX = inset + (bgSize - totalGridWidth) / 2
-            let offsetY = inset + (bgSize - totalGridHeight) / 2
+            let offsetX = (size - totalGridWidth) / 2
+            let offsetY = (size - totalGridHeight) / 2
 
             for (index, icon) in appIcons.enumerated() {
                 let col = index % columns

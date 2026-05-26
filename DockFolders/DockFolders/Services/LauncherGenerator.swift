@@ -43,9 +43,9 @@ class LauncherGenerator {
         #!/bin/bash
         MOUSE=$("\(mouseposPath)" 2>/dev/null)
         printf '%s\\n%s' "\(name)" "$MOUSE" > /tmp/dockfolders_open
-        if ! /usr/bin/pgrep -xq DockFolders; then
+        if ! /usr/bin/pgrep -xq "Imperator Dock Folders"; then
           /usr/bin/open -g -b com.dockfolders.app --args --background
-          for i in $(seq 1 20); do /usr/bin/pgrep -xq DockFolders && break; sleep 0.05; done
+          for i in $(seq 1 20); do /usr/bin/pgrep -xq "Imperator Dock Folders" && break; sleep 0.05; done
         fi
         /usr/bin/notifyutil -p com.dockfolders.open
         """

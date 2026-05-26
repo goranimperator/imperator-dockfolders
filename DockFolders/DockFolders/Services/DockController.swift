@@ -17,19 +17,40 @@ class DockController {
         return allVariants.contains(urlString)
     }
 
-    func isFolderInDock(_ folderURL: URL) -> Bool {
+    private var cachedDockURLs: Set<String>?
+
+    /// Read all dock URLs once per batch of isFolderInDock calls.
+    /// Call invalidateDockCache() after modifying the dock.
+    private func dockURLSet() -> Set<String> {
+        if let cached = cachedDockURLs { return cached }
         let apps = readDockSection("persistent-apps")
         let others = readDockSection("persistent-others")
-
-        return (apps + others).contains { entry in
-            guard let tileData = entry["tile-data"] as? [String: Any],
-                  let fileData = tileData["file-data"] as? [String: Any],
-                  let urlString = fileData["_CFURLString"] as? String else { return false }
-            return matchesFolder(urlString, folderURL: folderURL)
+        var urls = Set<String>()
+        for entry in apps + others {
+            if let tileData = entry["tile-data"] as? [String: Any],
+               let fileData = tileData["file-data"] as? [String: Any],
+               let urlString = fileData["_CFURLString"] as? String {
+                urls.insert(urlString)
+            }
         }
+        cachedDockURLs = urls
+        return urls
+    }
+
+    func invalidateDockCache() {
+        cachedDockURLs = nil
+    }
+
+    func isFolderInDock(_ folderURL: URL) -> Bool {
+        let urls = dockURLSet()
+        let launcherPath = LauncherGenerator.launcherURL(for: folderURL).path
+        let folderPath = folderURL.path + "/"
+        let allVariants = dockURLVariants(for: launcherPath) + dockURLVariants(for: folderPath)
+        return allVariants.contains { urls.contains($0) }
     }
 
     func addToDock(_ folderURL: URL) {
+        invalidateDockCache()
         guard !isFolderInDock(folderURL) else { return }
 
         LauncherGenerator.ensureLaunchersDirectory()
@@ -63,6 +84,7 @@ class DockController {
     }
 
     func removeFromDock(_ folderURL: URL) {
+        invalidateDockCache()
         removeFromSection("persistent-apps", folderURL: folderURL)
         removeFromSection("persistent-others", folderURL: folderURL)
         LauncherGenerator.removeLauncher(for: folderURL)

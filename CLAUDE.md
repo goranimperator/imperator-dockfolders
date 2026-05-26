@@ -124,11 +124,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ### Export to Applications
 
 ```bash
-cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/DockFolders.app "/Applications/Imperator Dock Folders.app"
+cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/"Imperator Dock Folders.app" "/Applications/Imperator Dock Folders.app"
 codesign --sign - --force --deep "/Applications/Imperator Dock Folders.app"
 ```
 
-The app shows as "Imperator Dock Folders" in Finder (via `CFBundleDisplayName`).
+`PRODUCT_NAME` is "Imperator Dock Folders" — this controls the menu bar name, System Settings name, and process name.
 
 ### Ad-hoc code signing
 
@@ -147,32 +147,22 @@ Without this, Gatekeeper blocks the app as "damaged" when transferred via AirDro
 5. **Launcher auto-starts the app** — `pgrep` + `open -g -b` in the shell script
 6. **Manual Update Icon button** — `applicationWillTerminate` doesn't have time to run icon generation
 
-## TODO v2
+## TODO v3
 
-### 1. Smoother popup experience
-Investigate if the popup panel can open faster/smoother. Currently takes ~0.5s from click to visible popup. Possible improvements:
-- Pre-load folder data at app start instead of `store.reload()` on every popup
-- Reduce latency in Darwin notification -> panel display
-- Faster icon loading (cache NSImage instances)
-- Profile `FolderPopupController.show()` to find bottlenecks
+### 1. Prevent Dock genie effect when moving mouse to popup panel
+When clicking a dock folder icon, the Dock may start its genie/bounce animation. Investigate if this can be suppressed or interrupted when the mouse moves toward the popup panel. The launcher `.app` currently has `LSUIElement = true` but the Dock still animates the icon.
 
-### 2. Popup should stay above the folder icon in Dock
-Problem: If the user moves the mouse quickly after clicking, the popup appears at the cursor instead of above the folder icon. Cause: mouse position is read in the launcher script, but it takes ~0.5s before the app receives the Darwin notification and shows the panel — during that time the mouse may have moved.
-
-Possible solutions:
-- Save mouse position at click time (already done in launcher script via CoreGraphics) — verify this position is actually used and not `NSEvent.mouseLocation` as fallback
-- Calculate the dock icon's fixed position instead of using mouse position: read the Dock plist's `persistent-apps` order + dock size/position to calculate exact X coordinate
-- Alternative: cache the last click position per folder and reuse if a new position arrives within a short time
-
-Relevant code:
-- `LauncherGenerator.swift` line 42-43: script writes mouse position to `/tmp/dockfolders_open`
-- `DockFoldersApp.swift` `handleDarwinNotification()`: reads the file and converts coordinates
-- `FolderPopupController.show()`: receives `mousePosition` and positions the panel
+### 2. Popup panel visual polish
+Update popup styling to better match macOS native feel:
+- Arrow shape and size refinement
+- Corner radius tuning
+- Background material/blur adjustments
+- Border stroke styling
 
 ## Known limitations
 
-- Launcher script uses Python3 for CoreGraphics mouse position capture
-- `pgrep -xq DockFolders` matches the process name — if `PRODUCT_NAME` changes, the script must be updated
+- Launcher script uses compiled Swift helper for CoreGraphics mouse position capture
+- `pgrep -xq "Imperator Dock Folders"` matches the process name — if `PRODUCT_NAME` changes, update `LauncherGenerator.swift`
 - Bundle identifier `com.dockfolders.app` is hardcoded in the launcher script
 - Dock icon cache may need `killall Dock` / `lsregister` to update
 - `main` branch on GitLab is protected — force push requires unprotecting it first

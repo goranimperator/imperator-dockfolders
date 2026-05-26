@@ -19,7 +19,7 @@ struct FolderListView: View {
 
                     Image(systemName: "folder.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(folder.isInDock ? Color.accentColor : .secondary)
+                        .foregroundStyle(Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255))
                     if editingFolder == folder {
                         TextField("Folder name", text: $editedName, onCommit: {
                             commitRename(folder)

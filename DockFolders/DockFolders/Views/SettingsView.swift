@@ -45,5 +45,6 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 400)
         .padding()
+        .tint(Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255))
     }
 }

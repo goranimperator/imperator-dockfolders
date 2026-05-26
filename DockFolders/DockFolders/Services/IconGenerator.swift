@@ -42,7 +42,8 @@ class IconGenerator {
 
         let launcherURL = LauncherGenerator.launcherURL(for: folderURL)
         if FileManager.default.fileExists(atPath: launcherURL.path) {
-            NSWorkspace.shared.setIcon(image, forFile: launcherURL.path, options: [])
+            // Regenerate entire launcher with proper .icns file
+            LauncherGenerator.generateLauncher(for: folderURL)
         }
     }
 

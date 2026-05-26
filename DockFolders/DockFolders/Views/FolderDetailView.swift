@@ -121,8 +121,8 @@ struct GridSettingsBar: View {
     @State private var spinAngle: Double = 0
     @State private var updateHovered = false
 
-    private let columnOptions = [2, 3, 4, 5]
-    private let pageOptions = [4, 6, 8, 9, 12, 15, 16, 20, 25]
+    private let columnOptions = [2, 3, 4]
+    private let pageOptions = [4, 6, 8, 9, 12]
 
     var body: some View {
         HStack(spacing: 20) {

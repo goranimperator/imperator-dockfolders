@@ -29,6 +29,7 @@ class LauncherGenerator {
             "CFBundleExecutable": "launch",
             "CFBundleIdentifier": "com.imperator.dockfolders.launcher.\(safeBundleId)",
             "CFBundleName": name,
+            "CFBundleIconFile": "AppIcon",
             "CFBundleVersion": "1.0",
             "CFBundleShortVersionString": "1.0",
             "CFBundlePackageType": "APPL",
@@ -53,7 +54,7 @@ class LauncherGenerator {
         try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
 
         let icon = IconGenerator.generateIconImage(for: folderURL)
-        NSWorkspace.shared.setIcon(icon, forFile: appURL.path, options: [])
+        Self.writeIcnsToBundle(icon, at: appURL)
     }
 
     static func removeLauncher(for folderURL: URL) {
@@ -77,6 +78,41 @@ class LauncherGenerator {
                 generateLauncher(for: folderURL)
             }
         }
+    }
+
+    static func writeIcnsToBundle(_ image: NSImage, at appURL: URL) {
+        let resourcesURL = appURL.appendingPathComponent("Contents/Resources")
+        try? FileManager.default.createDirectory(at: resourcesURL, withIntermediateDirectories: true)
+
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".iconset")
+        try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+
+        for size in [16, 32, 128, 256, 512] {
+            for scale in [1, 2] {
+                let px = size * scale
+                let suffix = scale == 1 ? "" : "@2x"
+                let resized = NSImage(size: NSSize(width: px, height: px))
+                resized.lockFocus()
+                image.draw(in: NSRect(x: 0, y: 0, width: px, height: px))
+                resized.unlockFocus()
+                if let tiff = resized.tiffRepresentation,
+                   let rep = NSBitmapImageRep(data: tiff),
+                   let png = rep.representation(using: .png, properties: [:]) {
+                    let name = "icon_\(size)x\(size)\(suffix).png"
+                    try? png.write(to: tmpDir.appendingPathComponent(name))
+                }
+            }
+        }
+
+        let icnsURL = resourcesURL.appendingPathComponent("AppIcon.icns")
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
+        process.arguments = ["-c", "icns", "-o", icnsURL.path, tmpDir.path]
+        try? process.run()
+        process.waitUntilExit()
+
+        try? FileManager.default.removeItem(at: tmpDir)
     }
 
     static func ensureLaunchersDirectory() {

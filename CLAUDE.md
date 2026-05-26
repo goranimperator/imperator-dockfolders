@@ -125,18 +125,75 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ```bash
 cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/"Imperator Dock Folders.app" "/Applications/Imperator Dock Folders.app"
-codesign --sign - --force --deep "/Applications/Imperator Dock Folders.app"
 ```
 
 `PRODUCT_NAME` is "Imperator Dock Folders" — this controls the menu bar name, System Settings name, and process name.
 
-### Ad-hoc code signing
+### Code signing
 
-Build phase "Code Sign" in the Xcode project runs:
+The app uses a self-signed certificate **"Imperator Dev"** instead of ad-hoc signing. This gives a stable identity so macOS persists Accessibility (TCC) permissions across restarts and transfers.
+
+- `CODE_SIGN_IDENTITY = "Imperator Dev"` in Xcode build settings
+- Build phase "Code Sign" also runs: `codesign --sign "Imperator Dev" --force --deep`
+- The certificate is a 10-year self-signed cert stored in the login keychain
+
+#### First-time setup on a new Mac
+
+Create the certificate (only needed once per machine):
+
+```bash
+# Generate certificate
+cat > /tmp/cert.conf <<'CONF'
+[ req ]
+default_bits = 2048
+prompt = no
+distinguished_name = dn
+x509_extensions = v3_code
+[ dn ]
+CN = Imperator Dev
+O = Imperator
+[ v3_code ]
+keyUsage = digitalSignature
+extendedKeyUsage = codeSigning
+basicConstraints = CA:false
+CONF
+
+openssl req -x509 -newkey rsa:2048 -keyout /tmp/cert-key.pem -out /tmp/cert.pem -days 3650 -nodes -config /tmp/cert.conf
+openssl pkcs12 -export -out /tmp/cert.p12 -inkey /tmp/cert-key.pem -in /tmp/cert.pem -passout pass:temp123 -legacy
+
+# Import to keychain
+security import /tmp/cert.p12 -k ~/Library/Keychains/login.keychain-db -P temp123 -T /usr/bin/codesign
+security add-trusted-cert -p codeSign -k ~/Library/Keychains/login.keychain-db /tmp/cert.pem
+
+# Verify
+security find-identity -v -p codesigning  # should show "Imperator Dev"
 ```
-codesign --sign - --force --deep "${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app"
+
+#### Deploying to another Mac
+
+1. Build and zip:
+```bash
+cd /Applications && zip -r ~/Desktop/"Imperator Dock Folders.zip" "Imperator Dock Folders.app"
 ```
-Without this, Gatekeeper blocks the app as "damaged" when transferred via AirDrop etc.
+
+2. Transfer the zip + `ImperatorDev.p12` certificate file to the target Mac.
+
+3. On the target Mac:
+```bash
+# Install certificate (password: temp123)
+security import ~/Downloads/ImperatorDev.p12 -k ~/Library/Keychains/login.keychain-db -P temp123 -T /usr/bin/codesign
+
+# Unzip and install
+unzip -o ~/Downloads/"Imperator Dock Folders.zip" -d /Applications/
+
+# Remove quarantine flags
+xattr -cr "/Applications/Imperator Dock Folders.app"
+
+# Launch
+open "/Applications/Imperator Dock Folders.app"
+```
+
+4. Grant Accessibility permission when prompted — it will persist.
 
 ## Key design decisions
 

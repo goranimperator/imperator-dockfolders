@@ -74,22 +74,6 @@ class FolderPopupController {
 
         closePanel()
 
-        let cols = folder.gridConfig.columns
-        let rows = Int(ceil(Double(folder.gridConfig.itemsPerPage) / Double(cols)))
-        let cellW: CGFloat = 88
-        let cellH: CGFloat = 90
-        let gridSpacing: CGFloat = 2
-        let hPad: CGFloat = 16
-        let vPad: CGFloat = 16
-        let hasPages = folder.apps.count > folder.gridConfig.itemsPerPage
-        let arrowH: CGFloat = 5
-        let pageDotsH: CGFloat = hasPages ? 19 : 0  // 4 top + 7 circle + 8 bottom
-
-        let gridWidth = CGFloat(cols) * cellW + CGFloat(cols - 1) * gridSpacing
-        let gridHeight = CGFloat(rows) * cellH + CGFloat(rows - 1) * gridSpacing
-        let panelWidth = gridWidth + hPad * 2
-        let panelHeight = gridHeight + vPad * 2 + pageDotsH + arrowH
-
         let panel: PopupPanel
         if let cached = cachedPanel {
             panel = cached
@@ -122,19 +106,34 @@ class FolderPopupController {
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mousePosition) })
             ?? NSScreen.main ?? NSScreen.screens[0]
 
-        // Arrow always centered
-        let arrowRelativeX = panelWidth / 2
-
+        // Create view with temporary arrowX, measure, then set correct arrowX
         let popupView = FolderPopupView(
+            folder: folder,
+            onDismiss: { self.dismiss() },
+            arrowX: 0,
+            onEdit: {
+                self.dismiss()
+                onEdit?()
+            }
+        )
+        let hostingView = NSHostingView(rootView: popupView)
+        let fittingSize = hostingView.fittingSize
+        let panelWidth = ceil(fittingSize.width)
+        let panelHeight = ceil(fittingSize.height)
+
+        // Arrow always centered — update view with correct arrowX and locked height
+        let arrowRelativeX = panelWidth / 2
+        hostingView.rootView = FolderPopupView(
             folder: folder,
             onDismiss: { self.dismiss() },
             arrowX: arrowRelativeX,
             onEdit: {
                 self.dismiss()
                 onEdit?()
-            }
+            },
+            fixedHeight: panelHeight
         )
-        panel.contentView = NSHostingView(rootView: popupView)
+        panel.contentView = hostingView
 
         // Position: arrow tip ~3px above the macOS APP_NAME tooltip position.
         // Default dock icons are ~48px, center ~24px from dock bottom.
@@ -150,15 +149,9 @@ class FolderPopupController {
         origin.y = max(screen.frame.origin.y + 4, min(origin.y, screen.frame.maxY - panelHeight - 4))
 
         panel.setFrame(NSRect(origin: origin, size: NSSize(width: panelWidth, height: panelHeight)), display: true)
-        panel.alphaValue = 0
+        panel.alphaValue = 1
         panel.orderFrontRegardless()
         panel.makeKey()
-
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.12
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().alphaValue = 1
-        }
 
         var scrollAccumX: CGFloat = 0
         var scrollAccumY: CGFloat = 0
@@ -185,11 +178,12 @@ class FolderPopupController {
 
             scrollAccumX += event.scrollingDeltaX
             scrollAccumY += event.scrollingDeltaY
-            let useX = abs(scrollAccumX) > abs(scrollAccumY)
-            let delta = useX ? scrollAccumX : scrollAccumY
-            if abs(delta) > 8 {
+
+            // Only horizontal swipe triggers page change
+            guard abs(scrollAccumX) > abs(scrollAccumY) else { return }
+            if abs(scrollAccumX) > 8 {
                 gestureTriggered = true
-                if delta > 0 {
+                if scrollAccumX > 0 {
                     NotificationCenter.default.post(name: .popupPrevPage, object: nil)
                 } else {
                     NotificationCenter.default.post(name: .popupNextPage, object: nil)
@@ -302,10 +296,16 @@ struct FolderPopupView: View {
     let onDismiss: () -> Void
     let arrowX: CGFloat
     var onEdit: (() -> Void)?
+    var fixedHeight: CGFloat = 0
 
+    @AppStorage("cutAppNames") private var cutAppNames: Bool = false
     @State private var currentPage = 0
     @State private var hoveredApp: String?
     @State private var slideDirection: Edge = .trailing
+
+    private var labels: [String: String] {
+        DockFoldersPath.loadLabels(in: folder.url)
+    }
 
     private var pages: [[AppEntry]] {
         guard !folder.apps.isEmpty else { return [] }
@@ -336,30 +336,28 @@ struct FolderPopupView: View {
                     ))
 
                 if pages.count > 1 {
-                    HStack(spacing: 7) {
-                        ForEach(0..<pages.count, id: \.self) { index in
-                            Circle()
-                                .fill(index == currentPage ? Color.white.opacity(0.9) : Color.white.opacity(0.25))
-                                .frame(width: 7, height: 7)
-                                .onTapGesture { goToPage(index) }
-                        }
-                    }
-                    .padding(.top, 4)
-                    .padding(.bottom, 8)
+                    Spacer().frame(height: 20)
                 }
             }
         }
-        .padding(.vertical, 16)
-        .background(
-            ZStack {
-                VisualEffectBackground()
-                Color.black.opacity(0.1)
+        .padding(16)
+        .frame(height: fixedHeight > 0 ? fixedHeight : nil, alignment: .top)
+        .overlay(alignment: .bottom) {
+            if pages.count > 1 {
+                HStack(spacing: 9) {
+                    ForEach(0..<pages.count, id: \.self) { index in
+                        Circle()
+                            .fill(index == currentPage ? Color.white.opacity(0.9) : Color.white.opacity(0.25))
+                            .frame(width: 7, height: 7)
+                            .onTapGesture { goToPage(index) }
+                    }
+                }
+                .padding(.bottom, 18)
             }
-            .clipShape(PopupShape(cornerRadius: 10, arrowX: arrowX))
-        )
-        .overlay(
-            PopupShape(cornerRadius: 10, arrowX: arrowX)
-                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+        }
+        .background(
+            VisualEffectBackground()
+                .clipShape(PopupShape(cornerRadius: 28, arrowX: arrowX))
         )
         .clipped()
         .onReceive(NotificationCenter.default.publisher(for: .popupNextPage)) { _ in
@@ -381,27 +379,29 @@ struct FolderPopupView: View {
         let cols = folder.gridConfig.columns
         let rows = Int(ceil(Double(folder.gridConfig.itemsPerPage) / Double(cols)))
 
-        return VStack(spacing: 2) {
+        return VStack(spacing: 6) {
             ForEach(0..<rows, id: \.self) { row in
-                HStack(spacing: 2) {
+                HStack(alignment: .top, spacing: 6) {
                     ForEach(0..<cols, id: \.self) { col in
                         let index = row * cols + col
                         if index < apps.count {
                             appCell(apps[index])
                         } else {
-                            Color.clear.frame(width: 88, height: 90)
+                            Color.clear.frame(width: cutAppNames ? 60 : 88).frame(maxHeight: .infinity)
                         }
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 16)
+        // no extra horizontal padding — container .padding(8) handles it
     }
 
     private func appCell(_ app: AppEntry) -> some View {
         let isHovered = hoveredApp == app.id
+        let displayName = labels[app.localURL.lastPathComponent] ?? app.name
 
-        return VStack(spacing: 4) {
+        return VStack(spacing: 2) {
             Image(nsImage: app.icon)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -409,20 +409,17 @@ struct FolderPopupView: View {
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
                 .scaleEffect(isHovered ? 1.15 : 1.0)
 
-            Text(app.name)
+            Text(displayName)
                 .font(.system(size: 10))
-                .lineLimit(2)
+                .lineLimit(cutAppNames ? 1 : 2)
+                .truncationMode(.tail)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(isHovered ? 1.0 : 0.7))
-                .frame(maxWidth: 76, alignment: .top)
-                .frame(height: 26, alignment: .top)
+                .frame(maxWidth: cutAppNames ? 48 : 76)
         }
-        .padding(6)
-        .frame(width: 88, height: 90)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(isHovered ? 0.1 : 0))
-        )
+        .padding(.vertical, 6)
+        .frame(width: cutAppNames ? 60 : 88)
+        .frame(maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.12), value: isHovered)
         .onHover { hovering in

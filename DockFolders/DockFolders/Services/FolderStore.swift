@@ -7,6 +7,15 @@ enum DockFoldersPath {
         return appSupport.appendingPathComponent("DockFolders")
     }()
 
+    static func loadLabels(in folderURL: URL) -> [String: String] {
+        let file = folderURL.appendingPathComponent(".labels")
+        guard let data = try? Data(contentsOf: file),
+              let dict = try? JSONDecoder().decode([String: String].self, from: data) else {
+            return [:]
+        }
+        return dict
+    }
+
     static func loadGridConfig(in folderURL: URL) -> GridConfig {
         let file = folderURL.appendingPathComponent(".gridconfig")
         guard let data = try? Data(contentsOf: file),
@@ -75,6 +84,14 @@ class FolderStore: ObservableObject {
         let isInDock = DockController.shared.isFolderInDock(folderURL)
         let gridConfig = DockFoldersPath.loadGridConfig(in: folderURL)
         return DockFolder(id: folderURL.path, name: name, apps: apps, isInDock: isInDock, gridConfig: gridConfig)
+    }
+
+    func refreshAll() {
+        AppEntry.clearIconCache()
+        reload()
+        Task.detached(priority: .utility) {
+            IconGenerator.regenerateAllIcons()
+        }
     }
 
     func reload() {
@@ -162,6 +179,28 @@ class FolderStore: ObservableObject {
         if let data = try? JSONEncoder().encode(names) {
             try? data.write(to: orderFile)
         }
+    }
+
+    func saveLabel(for folder: DockFolder, appFilename: String, label: String?) {
+        let file = folder.url.appendingPathComponent(".labels")
+        var labels = DockFoldersPath.loadLabels(in: folder.url)
+        if let label = label, !label.isEmpty {
+            labels[appFilename] = label
+        } else {
+            labels.removeValue(forKey: appFilename)
+        }
+        if labels.isEmpty {
+            try? fm.removeItem(at: file)
+        } else if let data = try? JSONEncoder().encode(labels) {
+            try? data.write(to: file)
+        }
+        reload()
+    }
+
+    func resetAllLabels(for folder: DockFolder) {
+        let file = folder.url.appendingPathComponent(".labels")
+        try? fm.removeItem(at: file)
+        reload()
     }
 
     func saveGridConfig(for folder: DockFolder, config: GridConfig) {

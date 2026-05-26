@@ -10,6 +10,10 @@ struct AppEntry: Identifiable, Hashable {
 
     private static var iconCache: [String: NSImage] = [:]
 
+    static func clearIconCache() {
+        iconCache.removeAll()
+    }
+
     private static func cachedIcon(forFile path: String) -> NSImage {
         if let cached = iconCache[path] { return cached }
         let icon = NSWorkspace.shared.icon(forFile: path)

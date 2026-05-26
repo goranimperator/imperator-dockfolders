@@ -6,6 +6,9 @@ struct ContentView: View {
     @State private var showNewFolderSheet = false
     @State private var showSidebar = true
     @State private var addFolderHovered = false
+    @State private var refreshHovered = false
+    @State private var refreshSpinAngle: Double = 0
+    @AppStorage("cutAppNames") private var cutAppNames: Bool = false
 
     var body: some View {
         HSplitView {
@@ -15,9 +18,41 @@ struct ContentView: View {
                         Text("Imperator Dock Folders")
                             .font(.system(size: 13, weight: .semibold))
                         Spacer()
+                        Button(action: {
+                            withAnimation(.interpolatingSpring(stiffness: 40, damping: 5)) {
+                                refreshSpinAngle += 360
+                            }
+                            store.refreshAll()
+                        }) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 12))
+                                .rotationEffect(.degrees(refreshSpinAngle))
+                                .opacity(refreshHovered ? 1.0 : 0.4)
+                        }
+                        .buttonStyle(.borderless)
+                        .onHover { h in
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                refreshHovered = h
+                            }
+                        }
+                        .help("Refresh all folders")
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
+
+                    Divider()
+
+                    HStack {
+                        Text("Cut app names")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $cutAppNames)
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 6)
 
                     Divider()
 

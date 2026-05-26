@@ -8,8 +8,11 @@ struct FolderDetailView: View {
     @State private var isEditing = false
     @State private var editedName: String = ""
     @State private var showAppPicker = false
-    @State private var showGridSettings = true
     @FocusState private var isNameFieldFocused: Bool
+
+    private var labels: [String: String] {
+        DockFoldersPath.loadLabels(in: folder.url)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -18,10 +21,8 @@ struct FolderDetailView: View {
 
             Divider()
 
-            if showGridSettings {
-                GridSettingsBar(folder: folder)
-                Divider()
-            }
+            GridSettingsBar(folder: folder)
+            Divider()
 
             if folder.apps.isEmpty {
                 emptyState
@@ -30,12 +31,26 @@ struct FolderDetailView: View {
                     apps: folder.apps,
                     columns: folder.gridConfig.columns,
                     itemsPerPage: folder.gridConfig.itemsPerPage,
+                    labels: labels,
                     onRemove: removeApp,
                     onReorder: { newOrder in
                         store.reorderApps(in: folder, to: newOrder)
+                    },
+                    onSetLabel: { app, label in
+                        store.saveLabel(for: folder, appFilename: app.localURL.lastPathComponent, label: label)
                     }
                 )
             }
+        }
+        .background {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                }
+        }
+        .onChange(of: isNameFieldFocused) { _, focused in
+            if !focused && isEditing { commitRename() }
         }
         .sheet(isPresented: $showAppPicker) {
             AppPickerView(folder: folder)
@@ -49,7 +64,7 @@ struct FolderDetailView: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 250)
                     .focused($isNameFieldFocused)
-                Button("Done") { commitRename() }
+                    .onExitCommand { commitRename() }
             } else {
                 Text(folder.name)
                     .font(.title2)
@@ -57,7 +72,9 @@ struct FolderDetailView: View {
                 Button(action: {
                     editedName = folder.name
                     isEditing = true
-                    isNameFieldFocused = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        isNameFieldFocused = true
+                    }
                 }) {
                     Image(systemName: "pencil")
                 }
@@ -65,13 +82,6 @@ struct FolderDetailView: View {
             }
 
             Spacer()
-
-            Button(action: { withAnimation { showGridSettings.toggle() } }) {
-                Image(systemName: "square.grid.3x3")
-                    .foregroundStyle(showGridSettings ? Color.accentColor : .secondary)
-            }
-            .buttonStyle(.borderless)
-            .help("Grid settings")
 
             Button(action: { showAppPicker = true }) {
                 Label("Add Apps", systemImage: "plus.app")
@@ -118,11 +128,9 @@ struct FolderDetailView: View {
 struct GridSettingsBar: View {
     let folder: DockFolder
     @EnvironmentObject var store: FolderStore
-    @State private var spinAngle: Double = 0
-    @State private var updateHovered = false
 
     private let columnOptions = [2, 3, 4]
-    private let pageOptions = [4, 6, 8, 9, 12]
+    private let pageOptions = [4, 6, 8, 9, 12, 16]
 
     var body: some View {
         HStack(spacing: 20) {
@@ -166,32 +174,30 @@ struct GridSettingsBar: View {
 
             Spacer()
 
-            Button(action: {
-                withAnimation(.interpolatingSpring(stiffness: 40, damping: 5)) {
-                    spinAngle += 360
-                }
-                DispatchQueue.global(qos: .userInitiated).async {
-                    IconGenerator.generateIcon(for: folder.url)
-                    if folder.isInDock {
-                        DockController.shared.refreshDock()
+            if hasCustomLabels {
+                Button(action: {
+                    store.resetAllLabels(for: folder)
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.caption)
+                        Text("Reset labels")
+                            .font(.caption)
                     }
+                    .foregroundStyle(.secondary)
                 }
-            }) {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .foregroundStyle(updateHovered ? .primary : .secondary)
-                    .scaleEffect(updateHovered ? 1.2 : 1.0)
-                    .rotationEffect(.degrees(spinAngle))
-                    .animation(.easeOut(duration: 0.15), value: updateHovered)
+                .buttonStyle(.borderless)
             }
-            .buttonStyle(.borderless)
-            .onHover { hovering in updateHovered = hovering }
-            .help("Update dock icon")
 
             gridPreview
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+    }
+
+    private var hasCustomLabels: Bool {
+        !DockFoldersPath.loadLabels(in: folder.url).isEmpty
     }
 
     private var gridPreview: some View {
@@ -243,10 +249,15 @@ struct AppGridCarousel: View {
     let apps: [AppEntry]
     let columns: Int
     let itemsPerPage: Int
+    let labels: [String: String]
     let onRemove: (AppEntry) -> Void
     let onReorder: ([AppEntry]) -> Void
+    let onSetLabel: (AppEntry, String?) -> Void
 
     @State private var currentPage: Int = 0
+    @State private var editingAppId: String?
+    @State private var editingText: String = ""
+    @FocusState private var isLabelFieldFocused: Bool
     @State private var dragOffset: CGFloat = 0
     @State private var draggingApp: AppEntry?
     @State private var dropTargetApp: AppEntry?
@@ -328,14 +339,14 @@ struct AppGridCarousel: View {
                         guard !scrollGestureTriggered else { return }
                         scrollAccumX += event.scrollingDeltaX
                         scrollAccumY += event.scrollingDeltaY
-                        let useX = abs(scrollAccumX) > abs(scrollAccumY)
-                        let delta = useX ? scrollAccumX : scrollAccumY
-                        if abs(delta) > 10 {
+                        // Only horizontal swipe triggers page change
+                        guard abs(scrollAccumX) > abs(scrollAccumY) else { return }
+                        if abs(scrollAccumX) > 10 {
                             scrollGestureTriggered = true
                             withAnimation(.interactiveSpring(response: 0.35, dampingFraction: 0.86)) {
-                                if (useX ? delta > 0 : delta < 0) && currentPage > 0 {
+                                if scrollAccumX > 0 && currentPage > 0 {
                                     currentPage -= 1
-                                } else if (useX ? delta < 0 : delta > 0) && currentPage < totalPages - 1 {
+                                } else if scrollAccumX < 0 && currentPage < totalPages - 1 {
                                     currentPage += 1
                                 }
                             }
@@ -353,6 +364,15 @@ struct AppGridCarousel: View {
             let maxPage = max(0, totalPages - 1)
             if currentPage > maxPage {
                 currentPage = maxPage
+            }
+        }
+        .onChange(of: isLabelFieldFocused) { _, focused in
+            if !focused, let appId = editingAppId {
+                if let app = apps.first(where: { $0.id == appId }) {
+                    let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    onSetLabel(app, trimmed.isEmpty || trimmed == app.name ? nil : trimmed)
+                }
+                editingAppId = nil
             }
         }
     }
@@ -473,11 +493,51 @@ struct AppGridCarousel: View {
                     .offset(x: 4, y: -4)
             }
 
-            Text(app.name)
+            let filename = app.localURL.lastPathComponent
+            let customLabel = labels[filename]
+            let displayName = customLabel ?? app.name
+
+            if editingAppId == app.id {
+                TextField("Label", text: $editingText, onCommit: {
+                    let trimmed = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    onSetLabel(app, trimmed.isEmpty || trimmed == app.name ? nil : trimmed)
+                    editingAppId = nil
+                })
+                .textFieldStyle(.roundedBorder)
                 .font(.caption)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
                 .frame(maxWidth: width - 4)
+                .focused($isLabelFieldFocused)
+            } else {
+                HStack(spacing: 4) {
+                    Text(displayName)
+                        .font(.caption)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+
+                    Button(action: {
+                        editingText = displayName
+                        editingAppId = app.id
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            isLabelFieldFocused = true
+                        }
+                    }) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+
+                    if customLabel != nil {
+                        Button(action: { onSetLabel(app, nil) }) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+                .frame(maxWidth: width - 4)
+            }
 
             if !app.exists {
                 Text("Missing")

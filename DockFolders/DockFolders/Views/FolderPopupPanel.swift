@@ -97,10 +97,13 @@ class FolderPopupController {
 
         // Use AX icon position for initial placement (same as tracking)
         let initialX: CGFloat
+        let iconCenterY: CGFloat?
         if let iconCenter = DockIconLocator.shared.iconCenter(forLauncherNamed: folder.name) {
             initialX = iconCenter.x
+            iconCenterY = iconCenter.y
         } else {
             initialX = mousePosition.x
+            iconCenterY = nil
         }
 
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mousePosition) })
@@ -135,14 +138,18 @@ class FolderPopupController {
         )
         panel.contentView = hostingView
 
-        // Position: arrow tip ~3px above the macOS APP_NAME tooltip position.
-        // Default dock icons are ~48px, center ~24px from dock bottom.
-        // APP_NAME tooltip appears ~2px above icon top edge.
-        // Arrow tip target: iconCenter.y + 26 (half icon + 2px gap)
-        let dockHeight: CGFloat = 60
+        // Position: arrow tip just above the dock icon top edge.
+        // AX iconCenter.y is the icon's vertical center. Icons are ~48px tall.
+        // Arrow tip = iconCenter.y + 26 (half icon + 2px gap)
+        let arrowTipY: CGFloat
+        if let iconY = iconCenterY {
+            arrowTipY = iconY + 24
+        } else {
+            arrowTipY = screen.frame.origin.y + 60
+        }
         var origin = NSPoint(
-            x: initialX - panelWidth / 2,
-            y: screen.frame.origin.y + dockHeight
+            x: initialX - panelWidth / 2 + 1,
+            y: arrowTipY
         )
 
         origin.x = max(screen.frame.origin.x + 4, min(origin.x, screen.frame.maxX - panelWidth - 4))

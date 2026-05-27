@@ -216,6 +216,17 @@ Update popup styling to better match macOS native feel:
 - Background material/blur adjustments
 - Border stroke styling
 
+### 3. Hide folder apps from Dock "recent apps" section
+When an app is launched from a dock folder, macOS adds it to the "Show suggested and recent apps in Dock" area. Investigate hiding these.
+
+**Findings:**
+- No `NSWorkspace` API to open an app without it being tracked as recent
+- `recent-apps` is stored in `com.apple.dock` plist and can be read/written via `defaults`
+- Approach: after launching an app from a folder, read `recent-apps`, filter out apps that exist in any dock folder, write back and refresh Dock
+- **Problem:** requires `killall Dock` to apply changes, which causes a visible Dock flash/restart
+- Alternative: periodically poll `recent-apps` and clean up, but same `killall Dock` issue
+- May not be worth implementing if the Dock flash is too disruptive — needs user testing
+
 ## Known limitations
 
 - Launcher script uses compiled Swift helper for CoreGraphics mouse position capture

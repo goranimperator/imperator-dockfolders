@@ -128,6 +128,7 @@ struct FolderDetailView: View {
 struct GridSettingsBar: View {
     let folder: DockFolder
     @EnvironmentObject var store: FolderStore
+    @State private var resetLabelsHovered = false
 
     private let columnOptions = [2, 3, 4]
     private let pageOptions = [4, 6, 8, 9, 12, 16]
@@ -185,8 +186,14 @@ struct GridSettingsBar: View {
                             .font(.caption)
                     }
                     .foregroundStyle(.secondary)
+                    .opacity(resetLabelsHovered ? 1.0 : 0.4)
                 }
                 .buttonStyle(.borderless)
+                .onHover { h in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        resetLabelsHovered = h
+                    }
+                }
             }
 
             gridPreview

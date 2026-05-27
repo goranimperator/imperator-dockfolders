@@ -324,6 +324,11 @@ struct FolderPopupView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Text(folder.name)
+                .font(.system(size: 20, weight: .regular))
+                .foregroundStyle(.white.opacity(0.85))
+                .padding(.bottom, 10)
+
             if pages.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "app.dashed")

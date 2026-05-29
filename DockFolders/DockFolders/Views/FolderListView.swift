@@ -11,7 +11,7 @@ struct FolderListView: View {
 
     var body: some View {
         List(selection: $selectedFolder) {
-            ForEach(Array(store.folders.enumerated()), id: \.element.id) { index, folder in
+            ForEach(store.folders) { folder in
                 HStack(spacing: 8) {
                     Image(systemName: "line.3.horizontal")
                         .font(.system(size: 14))

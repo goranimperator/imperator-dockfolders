@@ -24,7 +24,6 @@
 		A10023 /* AppDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10023; };
 		A10024 /* AppearanceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10024; };
 		A10030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10030; };
-		A10008 /* SigilShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10008; };
 		A10025 /* LauncherGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10025; };
 		A10009 /* FolderPopupPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10009; };
 		A10031 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = B10033; };
@@ -38,7 +37,6 @@
 		B10005 /* AppPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPickerView.swift; sourceTree = "<group>"; };
 		B10006 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B10007 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
-		B10008 /* SigilShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SigilShape.swift; sourceTree = "<group>"; };
 		B10010 /* DockFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockFolder.swift; sourceTree = "<group>"; };
 		B10011 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEntry.swift; sourceTree = "<group>"; };
 		B10012 /* AppearanceMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceMode.swift; sourceTree = "<group>"; };
@@ -123,7 +121,6 @@
 				B10005 /* AppPickerView.swift */,
 				B10006 /* SettingsView.swift */,
 				B10007 /* MenuBarView.swift */,
-				B10008 /* SigilShape.swift */,
 				B10009 /* FolderPopupPanel.swift */,
 			);
 			path = Views;
@@ -246,7 +243,6 @@
 				A10022 /* IconGenerator.swift in Sources */,
 				A10023 /* AppDiscovery.swift in Sources */,
 				A10024 /* AppearanceObserver.swift in Sources */,
-				A10008 /* SigilShape.swift in Sources */,
 				A10025 /* LauncherGenerator.swift in Sources */,
 				A10009 /* FolderPopupPanel.swift in Sources */,
 			);

@@ -141,10 +141,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
 
         FolderPopupController.shared.show(
             folder: folder,
-            mousePosition: position,
-            onEdit: { [weak self] in
-                self?.showMainWindow()
-            }
+            mousePosition: position
         )
     }
 }

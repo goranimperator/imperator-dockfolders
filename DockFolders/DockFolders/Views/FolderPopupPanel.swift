@@ -62,7 +62,7 @@ class FolderPopupController {
     private var lastDismissTime: Date?
     private var currentPanelWidth: CGFloat = 0
 
-    func show(folder: DockFolder, mousePosition: NSPoint, onEdit: (() -> Void)? = nil) {
+    func show(folder: DockFolder, mousePosition: NSPoint) {
         // Toggle: if same folder was just dismissed (dock icon clicked again), don't reopen
         if let lastFolder = lastDismissedFolder,
            let lastTime = lastDismissTime,
@@ -113,11 +113,7 @@ class FolderPopupController {
         let popupView = FolderPopupView(
             folder: folder,
             onDismiss: { self.dismiss() },
-            arrowX: 0,
-            onEdit: {
-                self.dismiss()
-                onEdit?()
-            }
+            arrowX: 0
         )
         let hostingView = NSHostingView(rootView: popupView)
         let fittingSize = hostingView.fittingSize
@@ -130,10 +126,6 @@ class FolderPopupController {
             folder: folder,
             onDismiss: { self.dismiss() },
             arrowX: arrowRelativeX,
-            onEdit: {
-                self.dismiss()
-                onEdit?()
-            },
             fixedHeight: panelHeight
         )
         panel.contentView = hostingView
@@ -207,7 +199,7 @@ class FolderPopupController {
         }
 
         // Track mouse movement to follow dock icon position
-        mouseMoveMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+        mouseMoveMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
             self?.updatePanelPosition()
         }
 
@@ -302,7 +294,6 @@ struct FolderPopupView: View {
     let folder: DockFolder
     let onDismiss: () -> Void
     let arrowX: CGFloat
-    var onEdit: (() -> Void)?
     var fixedHeight: CGFloat = 0
 
     @AppStorage("cutAppNames") private var cutAppNames: Bool = false
@@ -406,7 +397,6 @@ struct FolderPopupView: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
         }
-        // no extra horizontal padding — container .padding(8) handles it
     }
 
     private func appCell(_ app: AppEntry) -> some View {

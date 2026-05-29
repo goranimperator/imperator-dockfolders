@@ -8,6 +8,7 @@ struct FolderDetailView: View {
     @State private var isEditing = false
     @State private var editedName: String = ""
     @State private var showAppPicker = false
+    @State private var clickOutsideMonitor: Any?
     @FocusState private var isNameFieldFocused: Bool
 
     private var labels: [String: String] {
@@ -42,18 +43,41 @@ struct FolderDetailView: View {
                 )
             }
         }
-        .background {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    NSApp.keyWindow?.makeFirstResponder(nil)
-                }
-        }
         .onChange(of: isNameFieldFocused) { _, focused in
             if !focused && isEditing { commitRename() }
         }
+        .onChange(of: isEditing) { _, editing in
+            if editing {
+                installClickOutsideMonitor()
+            } else {
+                removeClickOutsideMonitor()
+            }
+        }
         .sheet(isPresented: $showAppPicker) {
             AppPickerView(folder: folder)
+        }
+    }
+
+    private func installClickOutsideMonitor() {
+        removeClickOutsideMonitor()
+        clickOutsideMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+            guard let window = event.window else { return event }
+            let locationInWindow = event.locationInWindow
+            if let responder = window.firstResponder as? NSView {
+                let frameInWindow = responder.convert(responder.bounds, to: nil)
+                if frameInWindow.contains(locationInWindow) {
+                    return event
+                }
+            }
+            window.makeFirstResponder(nil)
+            return event
+        }
+    }
+
+    private func removeClickOutsideMonitor() {
+        if let m = clickOutsideMonitor {
+            NSEvent.removeMonitor(m)
+            clickOutsideMonitor = nil
         }
     }
 
@@ -69,16 +93,13 @@ struct FolderDetailView: View {
                 Text(folder.name)
                     .font(.title2)
                     .fontWeight(.bold)
-                Button(action: {
-                    editedName = folder.name
-                    isEditing = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        isNameFieldFocused = true
+                    .onTapGesture(count: 2) {
+                        editedName = folder.name
+                        isEditing = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            isNameFieldFocused = true
+                        }
                     }
-                }) {
-                    Image(systemName: "pencil")
-                }
-                .buttonStyle(.borderless)
             }
 
             Spacer()
@@ -264,6 +285,7 @@ struct AppGridCarousel: View {
     @State private var currentPage: Int = 0
     @State private var editingAppId: String?
     @State private var editingText: String = ""
+    @State private var clickOutsideMonitor: Any?
     @FocusState private var isLabelFieldFocused: Bool
     @State private var dragOffset: CGFloat = 0
     @State private var draggingApp: AppEntry?
@@ -381,6 +403,36 @@ struct AppGridCarousel: View {
                 }
                 editingAppId = nil
             }
+        }
+        .onChange(of: editingAppId) { _, appId in
+            if appId != nil {
+                installClickOutsideMonitor()
+            } else {
+                removeClickOutsideMonitor()
+            }
+        }
+    }
+
+    private func installClickOutsideMonitor() {
+        removeClickOutsideMonitor()
+        clickOutsideMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+            guard let window = event.window else { return event }
+            let locationInWindow = event.locationInWindow
+            if let responder = window.firstResponder as? NSView {
+                let frameInWindow = responder.convert(responder.bounds, to: nil)
+                if frameInWindow.contains(locationInWindow) {
+                    return event
+                }
+            }
+            window.makeFirstResponder(nil)
+            return event
+        }
+    }
+
+    private func removeClickOutsideMonitor() {
+        if let m = clickOutsideMonitor {
+            NSEvent.removeMonitor(m)
+            clickOutsideMonitor = nil
         }
     }
 
@@ -515,32 +567,24 @@ struct AppGridCarousel: View {
                 .frame(maxWidth: width - 4)
                 .focused($isLabelFieldFocused)
             } else {
-                HStack(spacing: 4) {
+                HStack(spacing: 10) {
                     Text(displayName)
                         .font(.caption)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
-
-                    Button(action: {
-                        editingText = displayName
-                        editingAppId = app.id
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            isLabelFieldFocused = true
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) {
+                            editingText = displayName
+                            editingAppId = app.id
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                isLabelFieldFocused = true
+                            }
                         }
-                    }) {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 8))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
 
                     if customLabel != nil {
-                        Button(action: { onSetLabel(app, nil) }) {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 8))
-                                .foregroundStyle(.secondary)
+                        RevertLabelButton {
+                            onSetLabel(app, nil)
                         }
-                        .buttonStyle(.borderless)
                     }
                 }
                 .frame(maxWidth: width - 4)
@@ -612,6 +656,23 @@ struct DeleteBadge: View {
                 .font(.system(size: 21, weight: .bold))
                 .foregroundStyle(Color(red: 0.27, green: 0.0, blue: 0.0), Color(red: 1.0, green: 0.37, blue: 0.34))
                 .scaleEffect(isHovered ? 1.2 : 1.0)
+                .animation(.easeOut(duration: 0.15), value: isHovered)
+        }
+        .buttonStyle(.borderless)
+        .onHover { hovering in isHovered = hovering }
+    }
+}
+
+struct RevertLabelButton: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.counterclockwise")
+                .font(.system(size: 10))
+                .foregroundStyle(.white)
+                .opacity(isHovered ? 0.4 : 1.0)
                 .animation(.easeOut(duration: 0.15), value: isHovered)
         }
         .buttonStyle(.borderless)

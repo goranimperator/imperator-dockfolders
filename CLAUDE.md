@@ -204,6 +204,18 @@ open "/Applications/Imperator Dock Folders.app"
 5. **Launcher auto-starts the app** — `pgrep` + `open -g -b` in the shell script
 6. **Manual Update Icon button** — `applicationWillTerminate` doesn't have time to run icon generation
 
+## TODO
+
+### Optimize folder popup panel load time
+The popup panel currently loads too slowly when clicking a dock folder icon. Investigate what's taking time:
+- `NSHostingView.fittingSize` measurement pass
+- AX-based `DockIconLocator.iconCenter` lookup
+- Visual effect view material warm-up
+- App icon loading (`AppEntry.icon`)
+- Panel creation vs. cached panel reuse
+
+Look at pre-warming, lazy loading, or pre-creating the hosting view at app launch.
+
 ## Known limitations
 
 - Launcher script uses compiled Swift helper for CoreGraphics mouse position capture

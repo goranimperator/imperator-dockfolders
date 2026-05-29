@@ -34,6 +34,14 @@ struct FolderListView: View {
                             Text("\(folder.apps.count) apps")
                                 .fontWeight(.medium)
                         }
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(TapGesture(count: 2).onEnded {
+                            editedName = folder.name
+                            editingFolder = folder
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                isRenameFieldFocused = true
+                            }
+                        })
                     }
                     Spacer()
                     if editingFolder != folder {
@@ -44,23 +52,6 @@ struct FolderListView: View {
                                     .font(.system(size: 14))
                                     .foregroundStyle(.secondary)
                             }
-
-                            Button(action: {
-                                editedName = folder.name
-                                editingFolder = folder
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                    isRenameFieldFocused = true
-                                }
-                            }) {
-                                Image(systemName: "pencil.circle")
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.borderless)
-                            .help("Rename")
-                            .frame(width: isHovered ? nil : 0)
-                            .opacity(isHovered ? 1 : 0)
-                            .clipped()
 
                             Button(action: { folderToDelete = folder }) {
                                 Image(systemName: "xmark.circle")

@@ -390,7 +390,7 @@ struct FolderPopupView: View {
                         if index < apps.count {
                             appCell(apps[index])
                         } else {
-                            Color.clear.frame(width: cutAppNames ? 60 : 88).frame(maxHeight: .infinity)
+                            Color.clear.frame(width: 88).frame(maxHeight: .infinity)
                         }
                     }
                 }

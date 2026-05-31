@@ -203,6 +203,18 @@ class FolderStore: ObservableObject {
         reload()
     }
 
+    func resetAllLabelsAcrossFolders() {
+        for folder in folders {
+            let file = folder.url.appendingPathComponent(".labels")
+            try? fm.removeItem(at: file)
+        }
+        reload()
+    }
+
+    func hasAnyCustomLabels() -> Bool {
+        folders.contains { !DockFoldersPath.loadLabels(in: $0.url).isEmpty }
+    }
+
     func saveGridConfig(for folder: DockFolder, config: GridConfig) {
         let file = folder.url.appendingPathComponent(".gridconfig")
         if let data = try? JSONEncoder().encode(config) {

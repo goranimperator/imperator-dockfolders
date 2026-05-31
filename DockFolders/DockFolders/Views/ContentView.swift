@@ -8,6 +8,8 @@ struct ContentView: View {
     @State private var addFolderHovered = false
     @State private var refreshHovered = false
     @State private var refreshSpinAngle: Double = 0
+    @State private var resetNamesHovered = false
+    @State private var showResetNamesAlert = false
     @AppStorage("cutAppNames") private var cutAppNames: Bool = false
 
     var body: some View {
@@ -62,6 +64,28 @@ struct ContentView: View {
                                 .frame(width: 36, height: 20)
                                 .tint(Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255))
                         }
+
+                        if store.hasAnyCustomLabels() {
+                            HStack {
+                                Text("Reset app names")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Button(action: { showResetNamesAlert = true }) {
+                                    Image(systemName: "arrow.counterclockwise")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.secondary)
+                                        .opacity(resetNamesHovered ? 1.0 : 0.4)
+                                }
+                                .buttonStyle(.borderless)
+                                .onHover { h in
+                                    withAnimation(.easeInOut(duration: 0.1)) {
+                                        resetNamesHovered = h
+                                    }
+                                }
+                                .help("Reset all custom app names")
+                            }
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 8)
@@ -113,6 +137,14 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showNewFolderSheet) {
             NewFolderSheet(isPresented: $showNewFolderSheet, selectedFolder: $selectedFolder)
+        }
+        .alert("Reset all custom app names?", isPresented: $showResetNamesAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
+                store.resetAllLabelsAcrossFolders()
+            }
+        } message: {
+            Text("All custom labels will be removed and every app will revert to its original name in every folder. This action cannot be undone.")
         }
         .onChange(of: store.folders) { _, newFolders in
             if let sel = selectedFolder {

@@ -403,8 +403,9 @@ struct FolderPopupView: View {
         let isHovered = hoveredApp == app.id
         let customLabel = labels[app.localURL.lastPathComponent]
         let displayName = customLabel ?? app.name
-        // Custom labels are never truncated — only auto-derived app names respect cutAppNames.
-        let shouldCut = cutAppNames && customLabel == nil
+        // Cell width is always uniform. Only the line count changes:
+        // cut mode + auto name → 1 line truncated; otherwise 2 lines.
+        let textLines = (cutAppNames && customLabel == nil) ? 1 : 2
 
         return VStack(spacing: 2) {
             Image(nsImage: app.icon)
@@ -416,14 +417,14 @@ struct FolderPopupView: View {
 
             Text(displayName)
                 .font(.system(size: 10))
-                .lineLimit(shouldCut ? 1 : 2)
+                .lineLimit(textLines)
                 .truncationMode(.tail)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(isHovered ? 1.0 : 0.7))
-                .frame(maxWidth: shouldCut ? 48 : 76)
+                .frame(maxWidth: 76)
         }
         .padding(.vertical, 6)
-        .frame(width: shouldCut ? 60 : 88)
+        .frame(width: 88)
         .frame(maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .animation(.easeOut(duration: 0.12), value: isHovered)

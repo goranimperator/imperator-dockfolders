@@ -6,9 +6,7 @@ struct ContentView: View {
     @State private var showNewFolderSheet = false
     @State private var showSidebar = true
     @State private var addFolderHovered = false
-    @State private var refreshHovered = false
     @State private var refreshSpinAngle: Double = 0
-    @State private var resetNamesHovered = false
     @State private var showResetNamesAlert = false
     @AppStorage("cutAppNames") private var cutAppNames: Bool = false
 
@@ -32,23 +30,16 @@ struct ContentView: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Button(action: {
+                            PillIconButton(
+                                systemImage: "arrow.triangle.2.circlepath",
+                                backgroundColor: .white,
+                                iconColor: .black,
+                                rotation: refreshSpinAngle
+                            ) {
                                 withAnimation(.interpolatingSpring(stiffness: 40, damping: 5)) {
                                     refreshSpinAngle += 360
                                 }
                                 store.refreshAll()
-                            }) {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                                    .rotationEffect(.degrees(refreshSpinAngle))
-                                    .opacity(refreshHovered ? 1.0 : 0.4)
-                            }
-                            .buttonStyle(.borderless)
-                            .onHover { h in
-                                withAnimation(.easeInOut(duration: 0.1)) {
-                                    refreshHovered = h
-                                }
                             }
                             .help("Refresh all folders")
                         }
@@ -69,19 +60,14 @@ struct ContentView: View {
                             HStack {
                                 Text("Reset app names")
                                     .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255))
                                 Spacer()
-                                Button(action: { showResetNamesAlert = true }) {
-                                    Image(systemName: "arrow.counterclockwise")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.secondary)
-                                        .opacity(resetNamesHovered ? 1.0 : 0.4)
-                                }
-                                .buttonStyle(.borderless)
-                                .onHover { h in
-                                    withAnimation(.easeInOut(duration: 0.1)) {
-                                        resetNamesHovered = h
-                                    }
+                                PillIconButton(
+                                    systemImage: "arrow.counterclockwise",
+                                    backgroundColor: Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255),
+                                    iconColor: .white
+                                ) {
+                                    showResetNamesAlert = true
                                 }
                                 .help("Reset all custom app names")
                             }

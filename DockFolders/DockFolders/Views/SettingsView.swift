@@ -2,7 +2,6 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
-    @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.system.rawValue
     @AppStorage("showMenuBarExtra") private var showMenuBarExtra: Bool = true
     @AppStorage("showMainWindow") private var showMainWindow: Bool = true
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
@@ -24,19 +23,6 @@ struct SettingsView: View {
                     }
             }
 
-            Section("Appearance") {
-                Picker("Theme", selection: $appearanceMode) {
-                    ForEach(AppearanceMode.allCases, id: \.rawValue) { mode in
-                        Text(mode.displayName).tag(mode.rawValue)
-                    }
-                }
-                .pickerStyle(.radioGroup)
-                .onChange(of: appearanceMode) {
-                    guard let delegate = NSApp.delegate as? AppDelegate else { return }
-                    delegate.appearanceObserver.reapply()
-                }
-            }
-
             Section("Window") {
                 Toggle("Show in menu bar", isOn: $showMenuBarExtra)
                 Toggle("Show main window on launch", isOn: $showMainWindow)
@@ -45,6 +31,6 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 400)
         .padding()
-        .tint(Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255))
+        .tint(AppColors.brand)
     }
 }

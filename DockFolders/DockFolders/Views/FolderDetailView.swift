@@ -237,7 +237,7 @@ struct GridSettingsBar: View {
                     ForEach(0..<cols, id: \.self) { col in
                         let index = row * cols + col
                         RoundedRectangle(cornerRadius: 1.5)
-                            .fill(index < folder.gridConfig.itemsPerPage ? Color.accentColor.opacity(0.5) : Color.secondary.opacity(0.15))
+                            .fill(index < folder.gridConfig.itemsPerPage ? AppColors.brand.opacity(0.5) : Color.secondary.opacity(0.15))
                             .frame(width: 8, height: 8)
                     }
                 }
@@ -445,7 +445,7 @@ struct AppGridCarousel: View {
         let canNavigate = direction == .left ? currentPage > 0 : currentPage < totalPages - 1
 
         return Rectangle()
-            .fill(canNavigate && isActive ? Color.accentColor.opacity(0.2) : Color.clear)
+            .fill(canNavigate && isActive ? AppColors.brand.opacity(0.2) : Color.clear)
             .overlay(alignment: direction == .left ? .leading : .trailing) {
                 if canNavigate {
                     Image(systemName: direction == .left ? "chevron.left" : "chevron.right")

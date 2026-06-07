@@ -53,18 +53,18 @@ struct ContentView: View {
                                 .toggleStyle(.switch)
                                 .scaleEffect(0.55)
                                 .frame(width: 36, height: 20)
-                                .tint(Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255))
+                                .tint(AppColors.brand)
                         }
 
                         if store.hasAnyCustomLabels() {
                             HStack {
                                 Text("Reset app names")
                                     .font(.system(size: 12))
-                                    .foregroundStyle(Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255))
+                                    .foregroundStyle(AppColors.brand)
                                 Spacer()
                                 PillIconButton(
                                     systemImage: "arrow.counterclockwise",
-                                    backgroundColor: Color(red: 0xa0/255, green: 0x18/255, blue: 0x18/255),
+                                    backgroundColor: AppColors.brand,
                                     iconColor: .white
                                 ) {
                                     showResetNamesAlert = true

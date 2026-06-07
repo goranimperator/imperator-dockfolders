@@ -16,7 +16,10 @@ struct AppEntry: Identifiable, Hashable {
 
     private static func cachedIcon(forFile path: String) -> NSImage {
         if let cached = iconCache[path] { return cached }
-        let icon = NSWorkspace.shared.icon(forFile: path)
+        // BrandBook 22.2: resolve symlinks before reading the icon so Cryptex-
+        // mounted apps return the correct appearance-aware artwork.
+        let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
+        let icon = NSWorkspace.shared.icon(forFile: resolved)
         iconCache[path] = icon
         return icon
     }

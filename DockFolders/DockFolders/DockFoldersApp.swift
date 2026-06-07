@@ -4,12 +4,20 @@ import AppKit
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, ObservableObject {
     let store = FolderStore()
-    let appearanceObserver = AppearanceObserver()
     private var mainWindow: NSWindow?
+
+    nonisolated func applicationWillFinishLaunching(_ notification: Notification) {
+        // BrandBook 14.1 / 14.2 / 15.2: force dark mode, override system accent,
+        // and set the process name before any window appears.
+        Task { @MainActor in
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+            UserDefaults.standard.set(0, forKey: "AppleAccentColor")
+            ProcessInfo.processInfo.setValue("Imperator Dock Folders", forKey: "processName")
+        }
+    }
 
     nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
-            appearanceObserver.startObserving()
             setupDarwinListener()
             setupWakeListener()
             DockIconLocator.shared.requestAccessIfNeeded()
@@ -58,7 +66,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
 
         let contentView = ContentView()
             .environmentObject(store)
-            .environmentObject(appearanceObserver)
             .frame(minWidth: 600, minHeight: 400)
 
         let window = mainWindow ?? {

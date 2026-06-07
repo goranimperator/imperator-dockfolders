@@ -16,17 +16,18 @@
 		A10007 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10007; };
 		A10010 /* DockFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10010; };
 		A10011 /* AppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10011; };
-		A10012 /* AppearanceMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10012; };
 		A10020 /* FolderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10020; };
 		A10021 /* DockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10021; };
 		045192303617911728008093 /* DockIconLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 680012750185738315463007 /* DockIconLocator.swift */; };
 		A10022 /* IconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10022; };
 		A10023 /* AppDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10023; };
-		A10024 /* AppearanceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10024; };
 		A10030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10030; };
 		A10025 /* LauncherGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10025; };
 		A10009 /* FolderPopupPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10009; };
 		A10040 /* PillIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10040; };
+		A10041 /* AppColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10041; };
+		A10042 /* HoverButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10042; };
+		A10043 /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10043; };
 		A10031 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = B10033; };
 /* End PBXBuildFile section */
 
@@ -40,16 +41,17 @@
 		B10007 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		B10010 /* DockFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockFolder.swift; sourceTree = "<group>"; };
 		B10011 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEntry.swift; sourceTree = "<group>"; };
-		B10012 /* AppearanceMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceMode.swift; sourceTree = "<group>"; };
 		B10020 /* FolderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderStore.swift; sourceTree = "<group>"; };
 		B10021 /* DockController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockController.swift; sourceTree = "<group>"; };
 		680012750185738315463007 /* DockIconLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockIconLocator.swift; sourceTree = "<group>"; };
 		B10022 /* IconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconGenerator.swift; sourceTree = "<group>"; };
 		B10023 /* AppDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiscovery.swift; sourceTree = "<group>"; };
-		B10024 /* AppearanceObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceObserver.swift; sourceTree = "<group>"; };
 		B10025 /* LauncherGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherGenerator.swift; sourceTree = "<group>"; };
 		B10009 /* FolderPopupPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPopupPanel.swift; sourceTree = "<group>"; };
 		B10040 /* PillIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillIconButton.swift; sourceTree = "<group>"; };
+		B10041 /* AppColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppColors.swift; sourceTree = "<group>"; };
+		B10042 /* HoverButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoverButton.swift; sourceTree = "<group>"; };
+		B10043 /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
 		B10032 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10031 /* DockFolders.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DockFolders.entitlements; sourceTree = "<group>"; };
@@ -95,7 +97,6 @@
 			children = (
 				B10010 /* DockFolder.swift */,
 				B10011 /* AppEntry.swift */,
-				B10012 /* AppearanceMode.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -103,12 +104,12 @@
 		E10004 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				B10041 /* AppColors.swift */,
 				B10020 /* FolderStore.swift */,
 				B10021 /* DockController.swift */,
 				680012750185738315463007 /* DockIconLocator.swift */,
 				B10022 /* IconGenerator.swift */,
 				B10023 /* AppDiscovery.swift */,
-				B10024 /* AppearanceObserver.swift */,
 				B10025 /* LauncherGenerator.swift */,
 			);
 			path = Services;
@@ -125,6 +126,8 @@
 				B10007 /* MenuBarView.swift */,
 				B10009 /* FolderPopupPanel.swift */,
 				B10040 /* PillIconButton.swift */,
+				B10042 /* HoverButton.swift */,
+				B10043 /* ViewExtensions.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -239,16 +242,17 @@
 				A10007 /* MenuBarView.swift in Sources */,
 				A10010 /* DockFolder.swift in Sources */,
 				A10011 /* AppEntry.swift in Sources */,
-				A10012 /* AppearanceMode.swift in Sources */,
 				A10020 /* FolderStore.swift in Sources */,
 				A10021 /* DockController.swift in Sources */,
 				045192303617911728008093 /* DockIconLocator.swift in Sources */,
 				A10022 /* IconGenerator.swift in Sources */,
 				A10023 /* AppDiscovery.swift in Sources */,
-				A10024 /* AppearanceObserver.swift in Sources */,
 				A10025 /* LauncherGenerator.swift in Sources */,
 				A10009 /* FolderPopupPanel.swift in Sources */,
 				A10040 /* PillIconButton.swift in Sources */,
+				A10041 /* AppColors.swift in Sources */,
+				A10042 /* HoverButton.swift in Sources */,
+				A10043 /* ViewExtensions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -319,7 +323,7 @@
 				INFOPLIST_FILE = DockFolders/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Imperator Dock Folders";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 1986 Goran Imperator. All rights reserved.";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dockfolders.app;
 				PRODUCT_NAME = "Imperator Dock Folders";
@@ -345,7 +349,7 @@
 				INFOPLIST_FILE = DockFolders/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Imperator Dock Folders";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 1986 Goran Imperator. All rights reserved.";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dockfolders.app;
 				PRODUCT_NAME = "Imperator Dock Folders";

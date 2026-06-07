@@ -55,7 +55,7 @@ struct MenuBarFolderRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "folder.fill")
-                    .foregroundStyle(folder.isInDock ? Color.accentColor : .secondary)
+                    .foregroundStyle(folder.isInDock ? AppColors.brand : .secondary)
                 Text(folder.name)
                     .fontWeight(.medium)
                 Spacer()

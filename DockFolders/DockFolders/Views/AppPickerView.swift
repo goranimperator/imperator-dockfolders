@@ -10,7 +10,9 @@ private struct PickerApp: Identifiable {
         self.url = url
         self.id = url.absoluteString
         self.name = url.deletingPathExtension().lastPathComponent
-        self.icon = NSWorkspace.shared.icon(forFile: url.path)
+        // BrandBook 22.2: resolve symlinks for Cryptex-mounted apps.
+        let resolved = url.resolvingSymlinksInPath().path
+        self.icon = NSWorkspace.shared.icon(forFile: resolved)
     }
 }
 
@@ -95,7 +97,7 @@ struct AppPickerView: View {
                     .foregroundStyle(.secondary)
             } else if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(AppColors.brand)
             }
         }
         .padding(.horizontal, 12)

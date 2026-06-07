@@ -1,12 +1,11 @@
 import AppKit
 
-/// Shared dark-mode check used by both IconGenerator and AppearanceObserver.
+/// Dark-mode check for icon generation. BrandBook 14.1 forces dark appearance
+/// app-wide, so this effectively always returns true while the app is running.
+/// Kept as a function so background icon-render tasks running before `NSApp`
+/// is fully configured still resolve to a sensible value.
 func effectiveIsDark() -> Bool {
-    let mode = UserDefaults.standard.string(forKey: "appearanceMode") ?? AppearanceMode.system.rawValue
-    if mode == AppearanceMode.dark.rawValue {
-        return true
-    }
-    guard NSApp != nil else { return false }
+    guard NSApp != nil else { return true }
     let appearance = NSApp.effectiveAppearance
     return appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
 }

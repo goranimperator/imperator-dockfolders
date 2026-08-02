@@ -1,93 +1,187 @@
-# Mac Dock Folder
+<p align="center"><img src="docs/icon.png" width="128" alt="Imperator Dock Folders icon"></p>
 
+<h1 align="center">Imperator Dock Folders</h1>
 
+<p align="center">Custom app folders in the macOS Dock.</p>
 
-## Getting started
+---
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Group the apps you actually use into a folder, put that folder in the Dock, and click it to get
+a grid of those apps. Not a Finder stack of aliases — a real popup you lay out yourself: your
+own order, your own labels, your own grid size, paged if you want more than fits.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+macOS lets you drag a folder to the right side of the Dock and get a stack. Dock Folders puts
+your folders on the **left** side among the real apps, gives each one a generated icon showing
+what is inside, and opens a keyboard-dismissable popup anchored to the Dock icon.
 
-## Add your files
+## Requirements
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+Requires macOS 14 or later, Apple silicon. Built and tested on macOS 26 only — older versions
+are expected to work but have not been verified.
+
+Install at your own risk. The app is not notarized and carries no Apple Developer signature, so
+macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT license.
+
+## Install
+
+1. Download the zip from [Releases](https://github.com/goranimperator/imperator-dock-folder/releases)
+   and unpack it.
+2. Drag **Imperator Dock Folders.app** into `/Applications`. It has to live there — the launcher
+   bundles start the app by bundle identifier, and Launch Services resolves that most reliably
+   from `/Applications`.
+3. The app is signed with a self-signed certificate, not an Apple Developer ID, and it is not
+   notarized. Gatekeeper will block the first launch. Right-click the app and choose **Open**,
+   then confirm. If macOS still refuses:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Imperator Dock Folders.app"
+```
+
+4. Launch it and grant Accessibility when asked. See below for exactly what that is for.
+
+## Permissions
+
+Dock Folders asks for **one** system permission, and it degrades gracefully without it. Here is
+every permission-relevant thing the app does, and why.
+
+### Accessibility — asked for, optional
+
+**System Settings → Privacy & Security → Accessibility**
+
+macOS prompts for this on first launch. The app calls `AXIsProcessTrustedWithOptions`, then uses
+the Accessibility API to read the **screen position of your folder's icon in the Dock** so the
+popup can be anchored to it with the little arrow pointing at the right tile.
+
+That is the only thing it does with Accessibility. It does not read other apps' windows, does
+not observe keystrokes, and does not control other applications.
+
+**If you deny it:** everything still works. The popup falls back to the mouse position captured
+at click time, which for a Dock click is within a few pixels of the icon anyway. You can grant
+it later, or never.
+
+macOS remembers this grant against the app's code signature. Dock Folders ships signed with a
+stable self-signed certificate specifically so the grant survives updates — reinstalling a newer
+build does not make you re-tick the box.
+
+### Not asked for, and not needed
+
+To be explicit, since these are the ones people worry about:
+
+| Permission | Needed? | Why not |
+|---|---|---|
+| **Full Disk Access** | No | The Dock configuration is read and written through `CFPreferences` and `/usr/bin/defaults`, which are the supported APIs for the `com.apple.dock` preference domain. The app never reads `~/Library/Preferences/com.apple.dock.plist` directly, which is what would require FDA. |
+| **Files & Folders** (Desktop, Documents, Downloads) | No | The app only ever scans `/Applications`, `/System/Applications`, `~/Applications`, and `/Applications/Xcode.app/Contents/Applications`. None of those are TCC-protected, so no prompt appears and none of your documents are touched. |
+| **Input Monitoring** | No | No keyboard or global event taps. The popup's dismiss handling uses ordinary `NSEvent` monitors scoped to the app. |
+| **Automation / Apple Events** | No | No AppleScript and no cross-application scripting. Restarting the Dock is `killall Dock`, a plain signal to your own process, not an Apple Event. |
+| **Screen Recording** | No | Nothing is captured. Folder icons are drawn from each app's own icon via `NSWorkspace`. |
+| **Network** | No | The app makes no network requests. No telemetry, no update check, no analytics. |
+| **App Sandbox** | Not enabled | Writing to the Dock's preference domain and creating launcher bundles outside a container are both impossible inside the sandbox. This is why the app cannot ship on the Mac App Store. |
+
+### Where it writes
+
+Everything the app owns lives in one directory:
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/goranimperator/mac-dock-folder.git
-git branch -M main
-git push -uf origin main
+~/Library/Application Support/DockFolders/
 ```
 
-## Integrate with your tools
+Your folders, the symlinks to your apps, the per-folder layout config, and the generated
+launcher bundles. Deleting that directory resets the app completely.
 
-* [Set up project integrations](https://gitlab.com/goranimperator/mac-dock-folder/-/settings/integrations)
+Outside of that, the app writes to exactly two places:
 
-## Collaborate with your team
+- **`com.apple.dock` preferences** — adds and removes its launcher bundles from the Dock's
+  `persistent-apps` array. It only ever touches entries pointing at its own launchers.
+- **`/tmp/dockfolders_open`** — a one-line handoff file. A launcher writes the folder name and
+  the mouse position there, posts a Darwin notification, and the app reads the file and deletes
+  it immediately.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+### Login item — only if you turn it on
 
-## Test and Deploy
+**Settings → General → Open at login** registers the app with `SMAppService`. It shows up in
+System Settings → General → Login Items like any other, and the toggle removes it. Off by
+default.
 
-Use the built-in continuous integration in GitLab.
+## Use
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+- **Menu bar icon** (grid symbol) opens the folder list. Turn it off in Settings if you prefer
+  the main window only.
+- **New folder** in the main window, then **Add apps** to pick from everything installed.
+- **Double-click** a folder name or an app label to rename it. Custom labels are yours and stay
+  put; the underlying app is untouched.
+- **Drag** apps to reorder. The folder icon regenerates to match.
+- **Grid** controls set columns and items per page. More apps than fit means pages.
+- **Swipe** horizontally on a trackpad inside the popup to page through.
+- **Add to Dock** builds a launcher bundle with the generated icon and drops it into the Dock.
+- **Escape** or a click anywhere outside closes the popup.
 
-***
+Apps are added as **symlinks**, not copies and not Finder aliases. Nothing is duplicated on
+disk and nothing is moved.
 
-# Editing this README
+## Build
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Requires Xcode. Note the `DEVELOPER_DIR` prefix — a Command Line Tools–only setup cannot build
+this.
 
-## Suggestions for a good README
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project DockFolders/DockFolders.xcodeproj -scheme DockFolders -configuration Release build
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Two build phases matter:
 
-## Name
-Choose a self-explaining name for your project.
+- **Build mousepos Helper** compiles `MouseLocation/main.swift` into `Contents/MacOS/mousepos`.
+  The launcher scripts run this tiny binary to capture the mouse position at click time. It is
+  compiled here, at build time, on purpose: compiling it on the user's Mac would need `swiftc`,
+  which is an xcode-select shim that pops the "Install Command Line Developer Tools" dialog on
+  a machine without Xcode.
+- **Code Sign** signs the bundle with the self-signed `Imperator Dev` identity. That identity
+  is what makes the Accessibility grant survive an update. Building without it in your keychain
+  works, but every new build will ask for Accessibility again.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Deploy over an existing install with `rm -rf` first — a plain `cp -R` will not replace the old
+bundle:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+pkill -x "Imperator Dock Folders"; rm -rf "/Applications/Imperator Dock Folders.app"; cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/"Imperator Dock Folders.app" /Applications/
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## Layout
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+```
+DockFolders/DockFolders/
+  DockFoldersApp.swift      app delegate, Darwin notification listener, popup entry point
+  Models/                   DockFolder, AppEntry
+  Services/
+    FolderStore.swift       disk is the source of truth; every mutation writes through
+    DockController.swift    reads/writes com.apple.dock persistent-apps
+    LauncherGenerator.swift generates the launcher .app bundles and their scripts
+    IconGenerator.swift     renders the 1024x1024 folder icons
+    AppDiscovery.swift      scans the application directories
+    DockIconLocator.swift   Accessibility lookup of the Dock tile position
+    AppColors.swift         brand tokens
+  Views/                    SwiftUI + AppKit UI, FolderPopupPanel is the Dock popup
+  Resources/                AppIcon.icns, asset catalog
+MouseLocation/main.swift    the mousepos helper source
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+State on disk:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```
+~/Library/Application Support/DockFolders/
+  FolderName/
+    .gridconfig      {"columns": 3, "itemsPerPage": 9}
+    .apporder        ["App1.app", "App2.app"]
+    .labels          {"Slack.app": "Custom label"}
+    Safari.app       symlink -> /Applications/Safari.app
+  .launchers/
+    FolderName.app/  generated launcher bundle
+    mousepos         helper copied out of the app bundle
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## Third-party
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+None. SwiftUI and AppKit only, no package dependencies, no vendored code.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+MIT. See [LICENSE](LICENSE).

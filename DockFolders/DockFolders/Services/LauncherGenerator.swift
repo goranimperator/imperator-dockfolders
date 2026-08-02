@@ -122,47 +122,24 @@ class LauncherGenerator {
         }
     }
 
+    /// Copy the prebuilt mouse-position helper out of the app bundle into the
+    /// launchers directory, where the generated launcher scripts can run it.
+    ///
+    /// The helper is compiled by the "Build mousepos Helper" build phase and
+    /// ships signed inside `Contents/MacOS`. It used to be compiled here at
+    /// runtime via `/usr/bin/swiftc`, but that is an xcode-select shim: on a Mac
+    /// without developer tools it pops the "Install Command Line Developer
+    /// Tools" system dialog at the user on first launch.
     static func ensureMouseposHelper() {
         let fm = FileManager.default
-        let helperURL = launchersURL.appendingPathComponent("mousepos")
-        guard !fm.fileExists(atPath: helperURL.path) else { return }
+        guard let bundled = Bundle.main.url(forAuxiliaryExecutable: "mousepos") else { return }
 
         ensureLaunchersDirectory()
+        let helperURL = launchersURL.appendingPathComponent("mousepos")
 
-        let source = """
-        import CoreGraphics
-        let event = CGEvent(source: nil)
-        let location = event?.location ?? .zero
-        print(String(format: "%.0f", location.x))
-        print(String(format: "%.0f", location.y))
-        """
-
-        let tmpSource = fm.temporaryDirectory.appendingPathComponent("mousepos.swift")
-        try? source.write(to: tmpSource, atomically: true, encoding: .utf8)
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/swiftc")
-        process.arguments = ["-O", "-o", helperURL.path, tmpSource.path]
-        try? process.run()
-        process.waitUntilExit()
-
-        if process.terminationStatus == 0 {
-            // Sign with stable identity (falls back to ad-hoc if certificate not found)
-            let sign = Process()
-            sign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-            sign.arguments = ["--sign", "Imperator Dev", "--force", helperURL.path]
-            try? sign.run()
-            sign.waitUntilExit()
-            if sign.terminationStatus != 0 {
-                // Fallback to ad-hoc
-                let adHoc = Process()
-                adHoc.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-                adHoc.arguments = ["--sign", "-", "--force", helperURL.path]
-                try? adHoc.run()
-                adHoc.waitUntilExit()
-            }
-        }
-
-        try? fm.removeItem(at: tmpSource)
+        // Overwrite on every launch rather than copying once: self-heals a stale
+        // or wrong-architecture helper left behind by an older version.
+        try? fm.removeItem(at: helperURL)
+        try? fm.copyItem(at: bundled, to: helperURL)
     }
 }

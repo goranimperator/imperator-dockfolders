@@ -1,4 +1,27 @@
+# macOS
 .DS_Store
+
+# Xcode
 DerivedData/
+build/
 *.xcuserstate
 xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# Release artifacts
+dist/
+*.zip
+
+# Local tooling / agent state. Goran's global gitignore hides settings.local.json
+# on his machine, a collaborator's would not.
+.claude/settings.local.json
+.claude/coding-behavior.md
+
+# Scratch layout diagrams from the popup work — dev-only, not part of the app.
+cell-diagram.html
+padding-diagram.html
+sf-symbols-preview.html
+
+# Prebuilt helper: produced by the "Build mousepos Helper" build phase.
+MouseLocation/mousepos

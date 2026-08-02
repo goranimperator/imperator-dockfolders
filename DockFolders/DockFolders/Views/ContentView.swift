@@ -15,7 +15,7 @@ struct ContentView: View {
             if showSidebar {
                 VStack(spacing: 0) {
                     HStack {
-                        Text("Imperator Dock Folders")
+                        Text("Imperator DockFolders")
                             .font(.system(size: 13, weight: .semibold))
                         Spacer()
                     }

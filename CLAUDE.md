@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Imperator Dock Folders
+## Imperator DockFolders
 
 macOS app (Swift/SwiftUI/AppKit) that creates custom app folder shortcuts in the Dock. Minimum macOS 14, no App Sandbox.
 
-This app is part of the Imperator family. Visual + structural rules live in the **Imperator Apps BrandBook** at `https://gitlab.com/goranimperator/imperator-mac-apps-brandbook` — pull and read it before doing any UI work. Dock Folders is already aligned: forced dark mode, brand-only red accent (`#A01818` via `AppColors.brand`, never bare `Color.accentColor`), and the standard `AppColors` / `HoverButton` / `PillIconButton` / `ViewExtensions` boilerplate is in place.
+This app is part of the Imperator family. Visual + structural rules live in the **Imperator Apps BrandBook** at `https://gitlab.com/goranimperator/imperator-mac-apps-brandbook` — pull and read it before doing any UI work. DockFolders is already aligned: forced dark mode, brand-only red accent (`#A01818` via `AppColors.brand`, never bare `Color.accentColor`), and the standard `AppColors` / `HoverButton` / `PillIconButton` / `ViewExtensions` boilerplate is in place.
 
 ## Build, deploy, run
 
@@ -18,13 +18,13 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 # Deploy + restart. Always rm -rf first — plain `cp -R` will not overwrite
 # the existing bundle, so the old binary lingers in /Applications.
-pkill -x "Imperator Dock Folders" 2>/dev/null; sleep 1
-rm -rf "/Applications/Imperator Dock Folders.app"
-cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/"Imperator Dock Folders.app" "/Applications/Imperator Dock Folders.app"
-open "/Applications/Imperator Dock Folders.app"
+pkill -x "Imperator DockFolders" 2>/dev/null; sleep 1
+rm -rf "/Applications/Imperator DockFolders.app"
+cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/"Imperator DockFolders.app" "/Applications/Imperator DockFolders.app"
+open "/Applications/Imperator DockFolders.app"
 ```
 
-The build phase runs `codesign --sign "Imperator Dev" --force --deep` automatically. `PRODUCT_NAME`, `CFBundleDisplayName`, the window title, and the runtime process name (set via `ProcessInfo.processInfo.setValue(...)` in `applicationWillFinishLaunching`) are all `Imperator Dock Folders`. The launcher shell script `pgrep`s on that exact name — if you ever rename the product, also patch `LauncherGenerator.swift`.
+The build phase runs `codesign --sign "Imperator Dev" --force --deep` automatically. `PRODUCT_NAME`, `CFBundleDisplayName`, the window title, and the runtime process name (set via `ProcessInfo.processInfo.setValue(...)` in `applicationWillFinishLaunching`) are all `Imperator DockFolders`. The launcher shell script `pgrep`s on that exact name — if you ever rename the product, also patch `LauncherGenerator.swift`.
 
 There are no tests in this project. Verification is manual: build, deploy, restart, click around.
 
@@ -52,7 +52,7 @@ When the user clicks a dock folder icon, the launcher .app's `Contents/MacOS/lau
 
 1. A compiled Swift helper `mousepos` captures the mouse position via CoreGraphics.
 2. The script writes `folder name + x + y` to `/tmp/dockfolders_open`.
-3. Auto-starts the main app if needed: `pgrep -xq "Imperator Dock Folders" || open -g -b com.dockfolders.app --args --background`.
+3. Auto-starts the main app if needed: `pgrep -xq "Imperator DockFolders" || open -g -b com.dockfolders.app --args --background`.
 4. Posts Darwin notification `com.dockfolders.open` via `notifyutil -p`.
 5. `AppDelegate` listens via `CFNotificationCenterGetDarwinNotifyCenter()` and opens the popup at the captured mouse position.
 
@@ -145,13 +145,13 @@ To install on another Mac: import the `.p12`, unzip the built `.app` into `/Appl
 
 ## Known limitations
 
-- Bundle identifier `com.dockfolders.app` and product name `Imperator Dock Folders` are hard-coded in the launcher shell script template in `LauncherGenerator.swift`.
+- Bundle identifier `com.dockfolders.app` and product name `Imperator DockFolders` are hard-coded in the launcher shell script template in `LauncherGenerator.swift`.
 - Dock icon cache occasionally needs a manual `killall Dock` / `lsregister` to refresh after a major change.
 - App is arm64-only. `xcodebuild` builds for the host arch; a universal build needs `ARCHS="arm64 x86_64"` (the mousepos build phase already loops over `ARCHS`).
 
 ## Release
 
-`origin` is GitHub: `git@github.com:goranimperator/imperator-dock-folder.git`. Releases are cut
+`origin` is GitHub: `git@github.com:goranimperator/imperator-dockfolders.git`. Releases are cut
 with the `imperator-release` skill — audit first, tag and publish last, never without Goran's
 explicit word. Version lives in `MARKETING_VERSION` in `project.pbxproj`; `CURRENT_PROJECT_VERSION`
 should be set from `git rev-list --count HEAD` at release time.

@@ -12,7 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         Task { @MainActor in
             NSApp.appearance = NSAppearance(named: .darkAqua)
             UserDefaults.standard.set(0, forKey: "AppleAccentColor")
-            ProcessInfo.processInfo.setValue("Imperator Dock Folders", forKey: "processName")
+            ProcessInfo.processInfo.setValue("Imperator DockFolders", forKey: "processName")
         }
     }
 
@@ -80,7 +80,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
             return w
         }()
         window.contentView = NSHostingView(rootView: contentView)
-        window.title = "Imperator Dock Folders"
+        window.title = "Imperator DockFolders"
         window.setFrameAutosaveName("MainWindow")
         if mainWindow == nil { window.center() }
         window.makeKeyAndOrderFront(nil)
@@ -159,7 +159,7 @@ struct DockFoldersApp: App {
     @AppStorage("showMenuBarExtra") private var showMenuBarExtra: Bool = true
 
     var body: some Scene {
-        MenuBarExtra("Imperator Dock Folders", systemImage: "square.grid.2x2", isInserted: $showMenuBarExtra) {
+        MenuBarExtra("Imperator DockFolders", systemImage: "square.grid.2x2", isInserted: $showMenuBarExtra) {
             MenuBarView()
                 .environmentObject(appDelegate.store)
         }

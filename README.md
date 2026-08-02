@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/icon.png" width="128" alt="Imperator Dock Folders icon"></p>
+<p align="center"><img src="docs/icon.png" width="128" alt="Imperator DockFolders icon"></p>
 
-<h1 align="center">Imperator Dock Folders</h1>
+<h1 align="center">Imperator DockFolders</h1>
 
 <p align="center">Custom app folders in the macOS Dock.</p>
 
@@ -10,7 +10,7 @@ Group the apps you actually use into a folder, put that folder in the Dock, and 
 a grid of those apps. Not a Finder stack of aliases — a real popup you lay out yourself: your
 own order, your own labels, your own grid size, paged if you want more than fits.
 
-macOS lets you drag a folder to the right side of the Dock and get a stack. Dock Folders puts
+macOS lets you drag a folder to the right side of the Dock and get a stack. DockFolders puts
 your folders on the **left** side among the real apps, gives each one a generated icon showing
 what is inside, and opens a keyboard-dismissable popup anchored to the Dock icon.
 
@@ -24,9 +24,9 @@ macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT
 
 ## Install
 
-1. Download the zip from [Releases](https://github.com/goranimperator/imperator-dock-folder/releases)
+1. Download the zip from [Releases](https://github.com/goranimperator/imperator-dockfolders/releases)
    and unpack it.
-2. Drag **Imperator Dock Folders.app** into `/Applications`. It has to live there — the launcher
+2. Drag **Imperator DockFolders.app** into `/Applications`. It has to live there — the launcher
    bundles start the app by bundle identifier, and Launch Services resolves that most reliably
    from `/Applications`.
 3. The app is signed with a self-signed certificate, not an Apple Developer ID, and it is not
@@ -34,14 +34,14 @@ macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT
    then confirm. If macOS still refuses:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Imperator Dock Folders.app"
+xattr -dr com.apple.quarantine "/Applications/Imperator DockFolders.app"
 ```
 
 4. Launch it and grant Accessibility when asked. See below for exactly what that is for.
 
 ## Permissions
 
-Dock Folders asks for **one** system permission, and it degrades gracefully without it. Here is
+DockFolders asks for **one** system permission, and it degrades gracefully without it. Here is
 every permission-relevant thing the app does, and why.
 
 ### Accessibility — asked for, optional
@@ -59,7 +59,7 @@ not observe keystrokes, and does not control other applications.
 at click time, which for a Dock click is within a few pixels of the icon anyway. You can grant
 it later, or never.
 
-macOS remembers this grant against the app's code signature. Dock Folders ships signed with a
+macOS remembers this grant against the app's code signature. DockFolders ships signed with a
 stable self-signed certificate specifically so the grant survives updates — reinstalling a newer
 build does not make you re-tick the box.
 
@@ -142,7 +142,7 @@ Deploy over an existing install with `rm -rf` first — a plain `cp -R` will not
 bundle:
 
 ```bash
-pkill -x "Imperator Dock Folders"; rm -rf "/Applications/Imperator Dock Folders.app"; cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/"Imperator Dock Folders.app" /Applications/
+pkill -x "Imperator DockFolders"; rm -rf "/Applications/Imperator DockFolders.app"; cp -R ~/Library/Developer/Xcode/DerivedData/DockFolders-*/Build/Products/Release/"Imperator DockFolders.app" /Applications/
 ```
 
 ## Layout

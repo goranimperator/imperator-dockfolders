@@ -9,7 +9,7 @@ Install at your own risk. The app is not notarized and carries no Apple Develope
 macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT license.
 
 Gatekeeper blocks the first launch: right-click the app and choose Open, or run
-`xattr -dr com.apple.quarantine "/Applications/Imperator Dock Folders.app"`.
+`xattr -dr com.apple.quarantine "/Applications/Imperator DockFolders.app"`.
 
 Grant Accessibility when prompted so the popup can anchor to the Dock icon. It is optional —
 without it the popup falls back to the mouse position. No other permissions are requested, and

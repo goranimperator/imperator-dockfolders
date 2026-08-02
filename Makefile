@@ -1,5 +1,5 @@
-APP_NAME     = Imperator Dock Folders
-SLUG         = Imperator-Dock-Folders
+APP_NAME     = Imperator DockFolders
+SLUG         = Imperator-DockFolders
 PROJECT      = DockFolders/DockFolders.xcodeproj
 SCHEME       = DockFolders
 DERIVED      = build/dd
@@ -60,7 +60,7 @@ verify: check-version
 	/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "/tmp/relcheck/$(APP_NAME).app/Contents/Info.plist"
 	/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "/tmp/relcheck/$(APP_NAME).app/Contents/Info.plist"
 	/usr/libexec/PlistBuddy -c "Print :NSHumanReadableCopyright" "/tmp/relcheck/$(APP_NAME).app/Contents/Info.plist"
-	lipo -info "/tmp/relcheck/$(APP_NAME).app/Contents/MacOS/Imperator Dock Folders"
+	lipo -info "/tmp/relcheck/$(APP_NAME).app/Contents/MacOS/Imperator DockFolders"
 	test -x "/tmp/relcheck/$(APP_NAME).app/Contents/MacOS/mousepos" || { echo "mousepos helper MISSING from zip"; exit 1; }
 	codesign --verify --strict --verbose=1 "/tmp/relcheck/$(APP_NAME).app"
 	codesign -dvvv "/tmp/relcheck/$(APP_NAME).app" 2>&1 | grep ^Authority

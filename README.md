@@ -48,16 +48,22 @@ every permission-relevant thing the app does, and why.
 
 **System Settings → Privacy & Security → Accessibility**
 
-macOS prompts for this on first launch. The app calls `AXIsProcessTrustedWithOptions`, then uses
-the Accessibility API to read the **screen position of your folder's icon in the Dock** so the
-popup can be anchored to it with the little arrow pointing at the right tile.
+macOS prompts for this on first launch. Accessibility is used for two things, both about your
+own Dock clicks:
 
-That is the only thing it does with Accessibility. It does not read other apps' windows, does
-not observe keystrokes, and does not control other applications.
+- Reading the **screen position of your folder's icon in the Dock**, so the popup can be
+  anchored to it with the little arrow pointing at the right tile.
+- A **listen-only mouse-click tap** that lets the app react to a click on one of its own Dock
+  tiles instantly (~15ms) instead of waiting for macOS to spawn the launcher (~100ms). The tap
+  sees mouse button events only -- never keystrokes -- observes them without altering anything,
+  and the click is only acted on when it lands on one of the app's own Dock folder tiles.
 
-**If you deny it:** everything still works. The popup falls back to the mouse position captured
-at click time, which for a Dock click is within a few pixels of the icon anyway. You can grant
-it later, or never.
+That is all it does with Accessibility. It does not read other apps' windows, does not observe
+keystrokes, and does not control other applications.
+
+**If you deny it:** everything still works. Clicks are served by the launcher path (~100ms) and
+the popup falls back to the mouse position captured at click time, which for a Dock click is
+within a few pixels of the icon anyway. You can grant it later, or never.
 
 macOS remembers this grant against the app's code signature. DockFolders ships signed with a
 stable self-signed certificate specifically so the grant survives updates — reinstalling a newer
@@ -71,7 +77,7 @@ To be explicit, since these are the ones people worry about:
 |---|---|---|
 | **Full Disk Access** | No | The Dock configuration is read and written through `CFPreferences` and `/usr/bin/defaults`, which are the supported APIs for the `com.apple.dock` preference domain. The app never reads `~/Library/Preferences/com.apple.dock.plist` directly, which is what would require FDA. |
 | **Files & Folders** (Desktop, Documents, Downloads) | No | The app only ever scans `/Applications`, `/System/Applications`, `~/Applications`, and `/Applications/Xcode.app/Contents/Applications`. None of those are TCC-protected, so no prompt appears and none of your documents are touched. |
-| **Input Monitoring** | No | No keyboard or global event taps. The popup's dismiss handling uses ordinary `NSEvent` monitors scoped to the app. |
+| **Input Monitoring** | No | No keyboard taps of any kind. The mouse-click tap above is listen-only and covered by the Accessibility grant; macOS reserves Input Monitoring for keyboard/HID observation, which this app never does. |
 | **Automation / Apple Events** | No | No AppleScript and no cross-application scripting. Restarting the Dock is `killall Dock`, a plain signal to your own process, not an Apple Event. |
 | **Screen Recording** | No | Nothing is captured. Folder icons are drawn from each app's own icon via `NSWorkspace`. |
 | **Network** | No | The app makes no network requests. No telemetry, no update check, no analytics. |
@@ -130,10 +136,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project Doc
 Two build phases matter:
 
 - **Build mousepos Helper** compiles `MouseLocation/main.swift` into `Contents/MacOS/mousepos`.
-  The launcher scripts run this tiny binary to capture the mouse position at click time. It is
-  compiled here, at build time, on purpose: compiling it on the user's Mac would need `swiftc`,
-  which is an xcode-select shim that pops the "Install Command Line Developer Tools" dialog on
-  a machine without Xcode.
+  A copy of this binary is the executable inside every generated launcher bundle: it captures the
+  mouse position, writes the handoff file and signals the app, all in one process, which is what
+  keeps a Dock click fast. It is compiled here, at build time, on purpose: compiling it on the
+  user's Mac would need `swiftc`, which is an xcode-select shim that pops the "Install Command
+  Line Developer Tools" dialog on a machine without Xcode.
 - **Code Sign** signs the bundle with the self-signed `Imperator Dev` identity. That identity
   is what makes the Accessibility grant survive an update. Building without it in your keychain
   works, but every new build will ask for Accessibility again.
@@ -154,14 +161,14 @@ DockFolders/DockFolders/
   Services/
     FolderStore.swift       disk is the source of truth; every mutation writes through
     DockController.swift    reads/writes com.apple.dock persistent-apps
-    LauncherGenerator.swift generates the launcher .app bundles and their scripts
+    LauncherGenerator.swift generates the launcher .app bundles
     IconGenerator.swift     renders the 1024x1024 folder icons
     AppDiscovery.swift      scans the application directories
     DockIconLocator.swift   Accessibility lookup of the Dock tile position
     AppColors.swift         brand tokens
   Views/                    SwiftUI + AppKit UI, FolderPopupPanel is the Dock popup
   Resources/                AppIcon.icns, asset catalog
-MouseLocation/main.swift    the mousepos helper source
+MouseLocation/main.swift    the launcher helper source
 ```
 
 State on disk:
@@ -175,7 +182,7 @@ State on disk:
     Safari.app       symlink -> /Applications/Safari.app
   .launchers/
     FolderName.app/  generated launcher bundle
-    mousepos         helper copied out of the app bundle
+    mousepos         helper mirror for launchers made by older versions
 ```
 
 ## Third-party

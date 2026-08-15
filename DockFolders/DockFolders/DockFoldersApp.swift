@@ -19,11 +19,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
     nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             setupDarwinListener()
+            consumePendingHandoff()
+            // Warm SwiftUI layout, panel and material once so the first real
+            // popup skips its one-time setup cost. Largest folder = worst-case
+            // layout warmed.
+            if let folder = store.folders.max(by: { $0.apps.count < $1.apps.count }) {
+                FolderPopupController.shared.prewarm(folder: folder)
+            }
             setupWakeListener()
             DockIconLocator.shared.requestAccessIfNeeded()
+            setupDockClickMonitor()
             Task.detached(priority: .utility) {
                 LauncherGenerator.ensureMouseposHelper()
-                LauncherGenerator.updateAllLauncherScripts()
+                // Only bundles whose helper is stale get rewritten; a Dock
+                // restart re-harvests their tile icons (regeneration invalidates
+                // the Dock's icon cache, which otherwise shows a white tile).
+                if LauncherGenerator.updateAllLaunchersIfNeeded() {
+                    await DockController.shared.refreshDock()
+                }
             }
             let showWindow = UserDefaults.standard.object(forKey: "showMainWindow") as? Bool ?? true
             if showWindow && !CommandLine.arguments.contains("--background") {
@@ -108,6 +121,70 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         )
     }
 
+    private var clickTap: CFMachPort?
+
+    /// Fast path for Dock clicks. The Dock tile click still makes LaunchServices
+    /// spawn the launcher (~100ms to popup); this listen-only CGEvent tap sees
+    /// the same mouse-up directly, AX-hit-tests the Dock tile and opens the
+    /// popup in ~15-25ms. The launcher's Darwin notification arrives later and
+    /// is deduped in show(). The tap needs Accessibility; without the grant
+    /// tapCreate returns nil and the launcher path serves every click, exactly
+    /// as before.
+    private func setupDockClickMonitor() {
+        let mask = CGEventMask(
+            (1 << CGEventType.leftMouseUp.rawValue) |
+            (1 << CGEventType.leftMouseDown.rawValue) |
+            (1 << CGEventType.rightMouseDown.rawValue)
+        )
+        let callback: CGEventTapCallBack = { _, type, event, refcon in
+            if let refcon {
+                let delegate = Unmanaged<AppDelegate>.fromOpaque(refcon).takeUnretainedValue()
+                switch type {
+                case .leftMouseUp:
+                    let location = event.location
+                    Task { @MainActor in delegate.handleDockClick(topLeft: location) }
+                case .leftMouseDown, .rightMouseDown:
+                    let location = event.location
+                    Task { @MainActor in
+                        let screenH = NSScreen.screens.first?.frame.height ?? 0
+                        FolderPopupController.shared.handleGlobalMouseDown(
+                            screenPoint: NSPoint(x: location.x, y: screenH - location.y)
+                        )
+                    }
+                case .tapDisabledByTimeout, .tapDisabledByUserInput:
+                    Task { @MainActor in delegate.reenableClickTap() }
+                default:
+                    break
+                }
+            }
+            return Unmanaged.passUnretained(event)
+        }
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .tailAppendEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: callback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else { return }
+        clickTap = tap
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    private func reenableClickTap() {
+        if let tap = clickTap { CGEvent.tapEnable(tap: tap, enable: true) }
+    }
+
+    private func handleDockClick(topLeft: CGPoint) {
+        let screenH = NSScreen.screens.first?.frame.height ?? 0
+        let point = NSPoint(x: topLeft.x, y: screenH - topLeft.y)
+        let names = Set(store.folders.map(\.name))
+        guard let tile = DockIconLocator.shared.folderTile(at: point, matching: names) else { return }
+        openFolderPopup(named: tile.name, knownIconCenter: tile.center)
+    }
+
     private func setupWakeListener() {
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -115,6 +192,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
             queue: .main
         ) { [weak self] _ in
             self?.store.reload()
+        }
+    }
+
+    /// Consume a handoff the launcher wrote while we were still starting up.
+    /// Darwin notifications are not queued: a launcher that starts the app and
+    /// posts immediately loses the notification if it lands before
+    /// setupDarwinListener() has run, which left the first Dock click after
+    /// login without a popup. The launcher script therefore no longer waits and
+    /// notifies on a cold start -- it writes the handoff file, starts the app,
+    /// and this reads it as soon as the listener is in place.
+    private func consumePendingHandoff() {
+        let path = "/tmp/dockfolders_open"
+        guard let mtime = (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date else { return }
+        // Only act on a fresh click; a stale file from an old crashed click
+        // must not pop a folder when the app is launched manually later.
+        if Date().timeIntervalSince(mtime) < 10 {
+            handleDarwinNotification()
+        } else {
+            try? FileManager.default.removeItem(atPath: path)
         }
     }
 
@@ -138,17 +234,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         openFolderPopup(named: folderName, mousePosition: mousePos)
     }
 
-    private func openFolderPopup(named folderName: String, mousePosition: NSPoint? = nil) {
+    private func openFolderPopup(named folderName: String, mousePosition: NSPoint? = nil,
+                                 knownIconCenter: NSPoint? = nil) {
         guard let folder = store.folders.first(where: { $0.name == folderName })
                 ?? store.loadFolder(named: folderName) else { return }
 
-        // Try exact dock icon position via Accessibility API, fall back to mouse position
-        let iconCenter = DockIconLocator.shared.iconCenter(forLauncherNamed: folderName)
+        // Exact dock icon position: already known from the click monitor's AX
+        // hit-test, otherwise one Accessibility lookup. Passed through to show()
+        // so it never repeats the AX round-trip.
+        let iconCenter = knownIconCenter
+            ?? DockIconLocator.shared.iconCenter(forLauncherNamed: folderName)
         let position = iconCenter ?? mousePosition ?? NSEvent.mouseLocation
 
         FolderPopupController.shared.show(
             folder: folder,
-            mousePosition: position
+            mousePosition: position,
+            iconCenter: iconCenter
         )
     }
 }

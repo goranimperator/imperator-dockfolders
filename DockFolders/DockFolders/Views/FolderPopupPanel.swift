@@ -52,7 +52,6 @@ class FolderPopupController {
 
     private var panel: PopupPanel?
     private var cachedPanel: PopupPanel?
-    private var mouseMonitor: Any?
     private var mouseMoveMonitor: Any?
     private var keyMonitor: Any?
     private var localKeyMonitor: Any?
@@ -60,15 +59,79 @@ class FolderPopupController {
     private var currentFolderName: String?
     private var lastDismissedFolder: String?
     private var lastDismissTime: Date?
+    private var lastShowTime: Date?
     private var currentPanelWidth: CGFloat = 0
 
-    func show(folder: DockFolder, mousePosition: NSPoint) {
-        // Toggle: if same folder was just dismissed (dock icon clicked again), don't reopen
+    /// Dismissal for clicks outside the popup. Fed mouse-downs by the app-wide
+    /// event tap in AppDelegate (an NSEvent global monitor cannot see clicks in
+    /// the app's own windows nor synthetic events; the tap sees everything, so
+    /// clicks inside the panel are filtered here by frame).
+    func handleGlobalMouseDown(screenPoint: NSPoint) {
+        guard let panel, panel.isVisible else { return }
+        if !panel.frame.insetBy(dx: -1, dy: -1).contains(screenPoint) {
+            dismiss()
+        }
+    }
+
+    /// Warm the machinery the first popup would otherwise pay for: the panel,
+    /// one SwiftUI layout pass (fittingSize) and the .hudWindow material. The
+    /// panel is parked in cachedPanel and its content discarded, so nothing is
+    /// shown. Called once at app launch; measured ~30ms saved on the first
+    /// click after login.
+    func prewarm(folder: DockFolder) {
+        guard panel == nil, cachedPanel == nil else { return }
+
+        let p = PopupPanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        p.isFloatingPanel = true
+        p.level = .popUpMenu
+        p.backgroundColor = .clear
+        p.isOpaque = false
+        p.hasShadow = true
+        p.animationBehavior = .none
+        p.acceptsMouseMovedEvents = true
+
+        let hostingView = NSHostingView(rootView: FolderPopupView(
+            folder: folder,
+            onDismiss: {},
+            arrowX: 0
+        ))
+        _ = hostingView.fittingSize
+        p.contentView = hostingView
+        p.contentView = nil
+        cachedPanel = p
+    }
+
+    /// `iconCenter` is the AX dock-icon position the caller already looked up;
+    /// passing it avoids a second Accessibility round-trip here. `.some(nil)`
+    /// means "caller checked, AX unavailable"; omitting it falls back to a
+    /// local lookup for any future call sites that have not done one.
+    func show(folder: DockFolder, mousePosition: NSPoint, iconCenter: NSPoint?? = nil) {
+        // Toggle: if same folder was just dismissed (dock icon clicked again),
+        // don't reopen. One physical click can echo here twice -- the in-app
+        // click monitor at mouse-up and the launcher's Darwin notification
+        // ~100-200ms later -- so the guard is a time window, never consumed by
+        // the first echo. 0.35s outlasts both echoes but not a deliberate
+        // re-click.
         if let lastFolder = lastDismissedFolder,
            let lastTime = lastDismissTime,
            lastFolder == folder.name,
-           Date().timeIntervalSince(lastTime) < 0.8 {
-            lastDismissedFolder = nil
+           Date().timeIntervalSince(lastTime) < 0.35 {
+            return
+        }
+
+        // Dedup: a Dock click reaches us twice when the in-app click monitor is
+        // active -- once from the monitor (fast path) and ~100ms later from the
+        // launcher's Darwin notification. If the popup for this folder is
+        // already up and fresh, the second request is that echo; ignore it.
+        if let shownAt = lastShowTime,
+           currentFolderName == folder.name,
+           panel?.isVisible == true,
+           Date().timeIntervalSince(shownAt) < 1.0 {
             return
         }
 
@@ -96,9 +159,10 @@ class FolderPopupController {
         }
 
         // Use AX icon position for initial placement (same as tracking)
+        let resolvedIconCenter = iconCenter ?? DockIconLocator.shared.iconCenter(forLauncherNamed: folder.name)
         let initialX: CGFloat
         let iconCenterY: CGFloat?
-        if let iconCenter = DockIconLocator.shared.iconCenter(forLauncherNamed: folder.name) {
+        if let iconCenter = resolvedIconCenter {
             initialX = iconCenter.x
             iconCenterY = iconCenter.y
         } else {
@@ -192,11 +256,8 @@ class FolderPopupController {
 
         currentFolderName = folder.name
         currentPanelWidth = panelWidth
+        lastShowTime = Date()
         self.panel = panel
-
-        mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.dismiss()
-        }
 
         // Track mouse movement to follow dock icon position
         mouseMoveMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
@@ -277,7 +338,6 @@ class FolderPopupController {
     }
 
     private func removeMonitors() {
-        if let m = mouseMonitor { NSEvent.removeMonitor(m); mouseMonitor = nil }
         if let m = mouseMoveMonitor { NSEvent.removeMonitor(m); mouseMoveMonitor = nil }
         if let m = keyMonitor { NSEvent.removeMonitor(m); keyMonitor = nil }
         if let m = localKeyMonitor { NSEvent.removeMonitor(m); localKeyMonitor = nil }

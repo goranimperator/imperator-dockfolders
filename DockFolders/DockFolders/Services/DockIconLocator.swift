@@ -19,6 +19,84 @@ class DockIconLocator {
         AXIsProcessTrustedWithOptions(options)
     }
 
+    /// Cached union frame of the Dock item list (AppKit coordinates), used as a
+    /// cheap gate so the global click monitor does one rect test per click
+    /// instead of an AX round-trip. Refreshed lazily.
+    private var dockFrame: NSRect?
+    private var dockFrameStamp: Date = .distantPast
+
+    /// If `point` (AppKit bottom-left coordinates) is on a Dock tile whose title
+    /// matches `names`, return the title and the tile's center. One AX position
+    /// query when the point is inside the Dock region; pure math otherwise.
+    func folderTile(at point: NSPoint, matching names: Set<String>) -> (name: String, center: NSPoint)? {
+        guard AXIsProcessTrusted(), !names.isEmpty else { return nil }
+
+        if dockFrame == nil || Date().timeIntervalSince(dockFrameStamp) > 30 {
+            dockFrame = currentDockFrame()
+            dockFrameStamp = Date()
+        }
+        guard let frame = dockFrame, frame.insetBy(dx: -8, dy: -8).contains(point) else {
+            return nil
+        }
+
+        // Enumerate Dock tiles and match on frame. A systemwide
+        // AXUIElementCopyElementAtPosition hit-test does not resolve Dock tiles
+        // reliably, so this reuses the same enumeration findDockItem uses.
+        guard let dockPID = NSRunningApplication.runningApplications(
+            withBundleIdentifier: "com.apple.dock"
+        ).first?.processIdentifier else { return nil }
+        let dockApp = AXUIElementCreateApplication(dockPID)
+        guard let dockList = axChildren(of: dockApp)?.first,
+              let items = axChildren(of: dockList) else { return nil }
+
+        for item in items {
+            guard let title = axTitle(of: item), names.contains(title),
+                  let itemFrame = axFrame(of: item) else { continue }
+            if itemFrame.insetBy(dx: -2, dy: -2).contains(point) {
+                return (title, NSPoint(x: itemFrame.midX, y: itemFrame.midY))
+            }
+        }
+        return nil
+    }
+
+    /// Element frame in AppKit bottom-left coordinates.
+    private func axFrame(of element: AXUIElement) -> NSRect? {
+        var posValue: CFTypeRef?
+        var sizeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posValue) == .success,
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue) == .success
+        else { return nil }
+        var position = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(posValue as! AXValue, .cgPoint, &position),
+              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else { return nil }
+        let screenH = NSScreen.main?.frame.height ?? 0
+        return NSRect(x: position.x, y: screenH - position.y - size.height,
+                      width: size.width, height: size.height)
+    }
+
+    private func currentDockFrame() -> NSRect? {
+        guard let dockPID = NSRunningApplication.runningApplications(
+            withBundleIdentifier: "com.apple.dock"
+        ).first?.processIdentifier else { return nil }
+        let dockApp = AXUIElementCreateApplication(dockPID)
+        guard let dockList = axChildren(of: dockApp)?.first else { return nil }
+
+        var posValue: CFTypeRef?
+        var sizeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(dockList, kAXPositionAttribute as CFString, &posValue) == .success,
+              AXUIElementCopyAttributeValue(dockList, kAXSizeAttribute as CFString, &sizeValue) == .success
+        else { return nil }
+        var position = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(posValue as! AXValue, .cgPoint, &position),
+              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else { return nil }
+
+        let screenH = NSScreen.screens.first?.frame.height ?? 0
+        return NSRect(x: position.x, y: screenH - position.y - size.height,
+                      width: size.width, height: size.height)
+    }
+
     // MARK: - Private
 
     private func findDockItem(named name: String) -> AXUIElement? {

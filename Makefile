@@ -10,6 +10,14 @@ PBXPROJ      = DockFolders/DockFolders.xcodeproj/project.pbxproj
 BUILD_NUMBER = $(shell git rev-list --count HEAD)
 IDENTITY     = $(or $(CODESIGN_IDENTITY),Imperator Dev)
 
+# What `release` stamps, and it is not BUILD_NUMBER. `release` makes one commit
+# before it tags, but every use of BUILD_NUMBER in that target expands BEFORE
+# that commit exists — so the number counts every commit except the release's
+# own, and the build the tag points at claims to be one older than it is.
+# Shipped that way twice: v1.0.0 carries 52 against 53 commits, v1.0.1 carries
+# 54 against 55. Same count plus the commit `release` is about to make.
+RELEASE_BUILD_NUMBER = $(shell git rev-list --count HEAD | awk '{print $$1 + 1}')
+
 # xcodebuild needs full Xcode; a Command Line Tools-only xcode-select fails.
 export DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 
@@ -41,8 +49,10 @@ dist: check-version build
 release: check-version
 	@git diff --quiet && git diff --cached --quiet || { echo "Working tree dirty -- commit first."; exit 1; }
 	sed -i '' 's/MARKETING_VERSION = .*/MARKETING_VERSION = $(VERSION);/g' $(PBXPROJ)
-	sed -i '' 's/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $(BUILD_NUMBER);/g' $(PBXPROJ)
-	$(MAKE) dist VERSION=$(VERSION)
+	sed -i '' 's/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $(RELEASE_BUILD_NUMBER);/g' $(PBXPROJ)
+	# Handed down explicitly, so the zip and the project file agree. `dist` on its
+	# own is a test build that makes no commit, and there its plain count is right.
+	$(MAKE) dist VERSION=$(VERSION) BUILD_NUMBER=$(RELEASE_BUILD_NUMBER)
 	git add $(PBXPROJ)
 	git commit -m "Release v$(VERSION)"
 	git tag -a v$(VERSION) -m "$(APP_NAME) $(VERSION)"

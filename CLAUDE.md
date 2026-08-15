@@ -182,7 +182,9 @@ To install on another Mac: import the `.p12`, unzip the built `.app` into `/Appl
 `origin` is GitHub: `git@github.com:goranimperator/imperator-dockfolders.git`. Releases are cut
 with the `imperator-release` skill — audit first, tag and publish last, never without Goran's
 explicit word. Version lives in `MARKETING_VERSION` in `project.pbxproj`; `CURRENT_PROJECT_VERSION`
-should be set from `git rev-list --count HEAD` at release time.
+is the commit count INCLUDING the release commit — `git rev-list --count HEAD` plus one, since
+that commit does not exist yet when the target stamps the number. `make release` does this;
+`RELEASE_BUILD_NUMBER` in the Makefile is the value, not `BUILD_NUMBER`.
 
 ## Popup latency (resolved 2026-08-15)
 

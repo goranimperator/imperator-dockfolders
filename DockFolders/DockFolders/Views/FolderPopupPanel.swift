@@ -359,7 +359,12 @@ struct FolderPopupView: View {
     @AppStorage("cutAppNames") private var cutAppNames: Bool = false
     @State private var currentPage = 0
     @State private var hoveredApp: String?
-    @State private var slideDirection: Edge = .trailing
+    /// True while a page animation is in flight. Hover is ignored during that
+    /// window: cells slide under a stationary pointer, so onHover fires
+    /// repeatedly mid-animation and its 0.12s curve then competes with the
+    /// 0.25s page animation for the same cell's position -- which slid a label
+    /// away from its own icon.
+    @State private var isPaging = false
 
     private var labels: [String: String] {
         DockFoldersPath.loadLabels(in: folder.url)
@@ -371,6 +376,20 @@ struct FolderPopupView: View {
         return stride(from: 0, to: folder.apps.count, by: perPage).map { start in
             Array(folder.apps[start..<min(start + perPage, folder.apps.count)])
         }
+    }
+
+    /// Every cell is a fixed 88pt wide (see appCell) and every page is padded out
+    /// to itemsPerPage, so a page's width is known without measuring. The
+    /// carousel needs it to offset by exactly one page.
+    private var pageWidth: CGFloat {
+        let cols = CGFloat(max(folder.gridConfig.columns, 1))
+        return cols * 88 + (cols - 1) * 6
+    }
+
+    /// Guards against a stale page index after apps are removed from the folder,
+    /// which would index past the end of `pages`.
+    private var safePage: Int {
+        min(max(currentPage, 0), max(pages.count - 1, 0))
     }
 
     var body: some View {
@@ -391,12 +410,31 @@ struct FolderPopupView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
-                gridPage(pages[currentPage])
-                    .id(currentPage)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: slideDirection),
-                        removal: .move(edge: slideDirection == .trailing ? .leading : .trailing)
-                    ))
+                // Carousel, not an insertion/removal transition. Every page stays
+                // in the hierarchy and paging animates one offset, so two pages
+                // can never occupy the same layout slot. The old
+                // .id(currentPage) + .move transition drew the outgoing and
+                // incoming page on top of each other, and a fast swipe back and
+                // forth interrupted the removal so several pages stacked --
+                // labels rendered as overlapping glyph soup.
+                //
+                // Both alignments are load-bearing:
+                //  - .top here, because a last page with fewer filled rows is
+                //    shorter than a full page and the default .center pushed its
+                //    icons to a different height than the other pages.
+                //  - .leading on the frame below, because the HStack is
+                //    pages.count * pageWidth wide and a narrower .frame CENTERS
+                //    its content by default, which showed half of page 1 next to
+                //    half of page 2 at rest.
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(0..<pages.count, id: \.self) { index in
+                        gridPage(pages[index])
+                            .frame(width: pageWidth, alignment: .top)
+                    }
+                }
+                .offset(x: -CGFloat(safePage) * pageWidth)
+                .frame(width: pageWidth, alignment: .leading)
+                .clipped()
 
                 if pages.count > 1 {
                     Spacer().frame(height: 20)
@@ -410,7 +448,7 @@ struct FolderPopupView: View {
                 HStack(spacing: 9) {
                     ForEach(0..<pages.count, id: \.self) { index in
                         Circle()
-                            .fill(index == currentPage ? Color.white.opacity(0.9) : Color.white.opacity(0.25))
+                            .fill(index == safePage ? Color.white.opacity(0.9) : Color.white.opacity(0.25))
                             .frame(width: 7, height: 7)
                             .onTapGesture { goToPage(index) }
                     }
@@ -424,17 +462,25 @@ struct FolderPopupView: View {
         )
         .clipped()
         .onReceive(NotificationCenter.default.publisher(for: .popupNextPage)) { _ in
-            if currentPage < pages.count - 1 { goToPage(currentPage + 1) }
+            if safePage < pages.count - 1 { goToPage(safePage + 1) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .popupPrevPage)) { _ in
-            if currentPage > 0 { goToPage(currentPage - 1) }
+            if safePage > 0 { goToPage(safePage - 1) }
         }
     }
 
     private func goToPage(_ index: Int) {
-        slideDirection = index > currentPage ? .trailing : .leading
+        // Drop hover state: the pointer can sit still while the cell under it
+        // slides away, so onHover never fires and the highlight would stay stuck
+        // on an app that is no longer on screen.
+        hoveredApp = nil
+        isPaging = true
         withAnimation(.easeInOut(duration: 0.25)) {
-            currentPage = index
+            currentPage = min(max(index, 0), max(pages.count - 1, 0))
+        }
+        // Matches the animation duration above; a later swipe just re-arms it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
+            isPaging = false
         }
     }
 
@@ -448,7 +494,13 @@ struct FolderPopupView: View {
                     ForEach(0..<cols, id: \.self) { col in
                         let index = row * cols + col
                         if index < apps.count {
+                            // Identity must follow the app, not the grid slot.
+                            // With only positional identity SwiftUI reuses a cell
+                            // for a different app mid-animation and drags the old
+                            // text layer along, which is what rendered labels as
+                            // overlapping glyph soup during a fast swipe.
                             appCell(apps[index])
+                                .id(apps[index].id)
                         } else {
                             Color.clear.frame(width: 88).frame(maxHeight: .infinity)
                         }
@@ -474,6 +526,7 @@ struct FolderPopupView: View {
                 .frame(width: 48, height: 48)
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
                 .scaleEffect(isHovered ? 1.15 : 1.0)
+                .animation(.easeOut(duration: 0.12), value: isHovered)
 
             Text(displayName)
                 .font(.system(size: 10))
@@ -481,14 +534,15 @@ struct FolderPopupView: View {
                 .truncationMode(.tail)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(isHovered ? 1.0 : 0.7))
+                .animation(.easeOut(duration: 0.12), value: isHovered)
                 .frame(maxWidth: 76)
         }
         .padding(.vertical, 6)
         .frame(width: 88)
         .frame(maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
-        .animation(.easeOut(duration: 0.12), value: isHovered)
         .onHover { hovering in
+            guard !isPaging else { return }
             hoveredApp = hovering ? app.id : nil
         }
         .onTapGesture {

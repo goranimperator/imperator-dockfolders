@@ -1,15 +1,16 @@
-Performance and reliability release. No new features, no changed behavior — the same app, much faster.
+Bug-fix release for the folder popup.
 
-- Click-to-popup is now ~15ms when Accessibility is granted (was ~150ms): the app reacts to the
-  Dock click directly instead of waiting for macOS to spawn the launcher. Without Accessibility
-  the launcher path serves every click at ~100ms, still faster than 1.0.0.
-- The first click after login opens the popup reliably in under 400ms. In 1.0.0 it took over a
-  second and sometimes did nothing.
-- Fixed a bug where a Dock folder tile could turn into a blank white icon after the app updated
-  its launchers.
-- The launcher no longer needs developer tools on the machine: 1.0.0 could pop the "Install
-  Command Line Developer Tools" dialog on Macs without Xcode. The helper now ships prebuilt
-  inside the app.
+- Fixed app labels rendering as garbled, overlapping text when hovering a cell and swiping
+  back and forth between pages. Two separate causes: grid cells were identified by their
+  position instead of by the app in them, so a fast interrupted swipe could reuse a cell for a
+  different app and drag the old label along; and the hover animation applied to the whole
+  cell, so a cell sliding under a stationary pointer got its position animated on the hover
+  curve while the page animated on its own, which could leave a label behind its icon.
+- Paging no longer uses an insertion/removal transition. Pages sit side by side and paging
+  animates one offset, so two pages can never occupy the same layout slot.
+- A last page with fewer apps is now aligned to the top, so icons sit at the same height on
+  every page instead of being centered vertically.
+- Hover highlight no longer sticks to an app that has scrolled off the page.
 
 Requires macOS 14 or later, Apple silicon. Built and tested on macOS 26 only — older versions
 are expected to work but have not been verified.

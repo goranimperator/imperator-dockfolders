@@ -10,6 +10,12 @@ struct ContentView: View {
     @State private var showResetNamesAlert = false
     @AppStorage("cutAppNames") private var cutAppNames: Bool = false
 
+    /// Width of the trailing control column in the sidebar settings rows. The
+    /// switch, the refresh pill and the reset pill all sit in this column and
+    /// are right-aligned inside it, so their right edges line up regardless of
+    /// each control's own intrinsic width.
+    private static let trailingControlWidth: CGFloat = 30
+
     var body: some View {
         HSplitView {
             if showSidebar {
@@ -25,6 +31,25 @@ struct ContentView: View {
                     Divider()
 
                     VStack(spacing: 8) {
+                        HStack {
+                            Text("Cut app names")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Toggle("", isOn: $cutAppNames)
+                                .toggleStyle(.switch)
+                                .scaleEffect(0.55)
+                                .tint(AppColors.brand)
+                                .labelsHidden()
+                                // scaleEffect only scales the rendering: the switch
+                                // still claims its full 54x24 fitting size in layout,
+                                // so without this the drawn capsule sits ~12pt short
+                                // of the pills below it. Sizing the frame to the drawn
+                                // size makes layout match what is on screen.
+                                .frame(width: 54 * 0.55, height: 24 * 0.55)
+                                .frame(width: Self.trailingControlWidth, alignment: .trailing)
+                        }
+
                         HStack {
                             Text("Refresh all folders")
                                 .font(.system(size: 12))
@@ -42,18 +67,7 @@ struct ContentView: View {
                                 store.refreshAll()
                             }
                             .help("Refresh all folders")
-                        }
-
-                        HStack {
-                            Text("Cut app names")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Toggle("", isOn: $cutAppNames)
-                                .toggleStyle(.switch)
-                                .scaleEffect(0.55)
-                                .frame(width: 36, height: 20)
-                                .tint(AppColors.brand)
+                            .frame(width: Self.trailingControlWidth, alignment: .trailing)
                         }
 
                         if store.hasAnyCustomLabels() {
@@ -70,6 +84,7 @@ struct ContentView: View {
                                     showResetNamesAlert = true
                                 }
                                 .help("Reset all custom app names")
+                                .frame(width: Self.trailingControlWidth, alignment: .trailing)
                             }
                         }
                     }
@@ -94,6 +109,15 @@ struct ContentView: View {
                                 addFolderHovered = h
                             }
                         }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+
+                    Divider()
+
+                    HStack {
+                        LaunchAtLoginToggle()
                         Spacer()
                     }
                     .padding(.horizontal, 20)

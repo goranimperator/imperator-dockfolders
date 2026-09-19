@@ -16,8 +16,8 @@ what is inside, and opens a keyboard-dismissable popup anchored to the Dock icon
 
 ## Requirements
 
-Requires macOS 14 or later, Apple silicon. Built and tested on macOS 26 only — older versions
-are expected to work but have not been verified.
+Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on macOS 27
+only: older versions are expected to work but have not been verified.
 
 Install at your own risk. The app is not notarized and carries no Apple Developer signature, so
 macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT license.
@@ -112,11 +112,15 @@ default.
 
 - **Menu bar icon** (grid symbol) opens the folder list. Turn it off in Settings if you prefer
   the main window only.
+- **Open at Login** sits in the sidebar footer as well as in Settings; both drive the same
+  `SMAppService` registration.
 - **New folder** in the main window, then **Add apps** to pick from everything installed.
 - **Double-click** a folder name or an app label to rename it. Custom labels are yours and stay
   put; the underlying app is untouched.
 - **Drag** apps to reorder. The folder icon regenerates to match.
 - **Grid** controls set columns and items per page. More apps than fit means pages.
+- **Cut app names** in the toolbar truncates long labels to one line instead of wrapping to
+  two. Custom labels you typed yourself always render in full, whichever way the toggle is set.
 - **Swipe** horizontally on a trackpad inside the popup to page through.
 - **Add to Dock** builds a launcher bundle with the generated icon and drops it into the Dock.
 - **Escape** or a click anywhere outside closes the popup.
@@ -126,8 +130,20 @@ disk and nothing is moved.
 
 ## Build
 
-Requires Xcode. Note the `DEVELOPER_DIR` prefix — a Command Line Tools–only setup cannot build
-this.
+Requires Xcode 27 or later. Note the `DEVELOPER_DIR` prefix: a Command Line Tools-only setup
+cannot build this.
+
+AppKit picks which generation of a control to draw from the SDK recorded in the binary's
+`LC_BUILD_VERSION`, not from the macOS it runs on. A binary stamped with an old SDK draws
+old-looking switches forever. Building with Xcode 27 stamps `sdk 27.0` while leaving `minos`
+at the deployment target, so the app gets current controls without raising its minimum:
+
+```bash
+otool -l "/Applications/Imperator DockFolders.app/Contents/MacOS/Imperator DockFolders" | awk '/LC_BUILD_VERSION/,/^$/' | grep -E "minos|sdk"
+```
+
+That must report `minos 14.0` and `sdk 27.0`. If `sdk` equals `minos`, the build used an old
+toolchain and every control in the app is a generation behind.
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project DockFolders/DockFolders.xcodeproj -scheme DockFolders -configuration Release build
@@ -156,8 +172,10 @@ pkill -x "Imperator DockFolders"; rm -rf "/Applications/Imperator DockFolders.ap
 
 ```
 DockFolders/DockFolders/
-  DockFoldersApp.swift      app delegate, Darwin notification listener, popup entry point
-  Models/                   DockFolder, AppEntry
+  DockFoldersApp.swift      app delegate, Dock-click event tap, Darwin listener, popup entry
+  Models/
+    DockFolder.swift        one folder: apps, grid config, whether it is in the Dock
+    AppEntry.swift          one app: resolved URL, display name, cached icon
   Services/
     FolderStore.swift       disk is the source of truth; every mutation writes through
     DockController.swift    reads/writes com.apple.dock persistent-apps
@@ -166,7 +184,17 @@ DockFolders/DockFolders/
     AppDiscovery.swift      scans the application directories
     DockIconLocator.swift   Accessibility lookup of the Dock tile position
     AppColors.swift         brand tokens
-  Views/                    SwiftUI + AppKit UI, FolderPopupPanel is the Dock popup
+  Views/
+    FolderPopupPanel.swift  the Dock popup: NSPanel subclass, arrow shape, paged app grid
+    ContentView.swift       main window shell, toolbar, sidebar split
+    FolderListView.swift    sidebar list of folders
+    FolderDetailView.swift  folder editor: app grid, drag-reorder, inline rename
+    AppPickerView.swift     picker for adding installed apps
+    SettingsView.swift      Settings window
+    MenuBarView.swift       menu bar extra content
+    HoverButton.swift       shared hover button (BrandBook)
+    PillIconButton.swift    shared pill icon button (BrandBook)
+    ViewExtensions.swift    shared view helpers (BrandBook)
   Resources/                AppIcon.icns, asset catalog
 MouseLocation/main.swift    the launcher helper source
 ```
@@ -184,6 +212,35 @@ State on disk:
     FolderName.app/  generated launcher bundle
     mousepos         helper mirror for launchers made by older versions
 ```
+
+## Release
+
+Cut with `make release VERSION=x.y.z`. It refuses a dirty tree, stamps `MARKETING_VERSION` and
+`CURRENT_PROJECT_VERSION` into the project, builds and signs the zip, commits, tags, pushes, and
+publishes the GitHub release with `RELEASE_NOTES.md` as the body.
+
+```bash
+make dist VERSION=x.y.z
+make verify VERSION=x.y.z
+make release VERSION=x.y.z
+```
+
+`dist` is safe — it touches nothing in git and nothing on the remote, so use it to build a test
+zip. `verify` unpacks the zip and checks the app inside it, which is the one people download.
+`release` is the irreversible one.
+
+## Known limits
+
+- Not notarized and signed with a self-signed certificate, so Gatekeeper blocks the first launch
+  and the app can never ship on the Mac App Store.
+- Apple silicon only. The build produces a host-arch binary; a universal build needs
+  `ARCHS="arm64 x86_64"`.
+- Built against the macOS 27 SDK and tested on macOS 27 only. macOS 14 through 26 are expected
+  to work but unverified.
+- The Dock's icon cache occasionally needs a manual `killall Dock` to pick up a changed folder
+  icon.
+- Folders live at a fixed path, `~/Library/Application Support/DockFolders/`. It is not
+  configurable.
 
 ## Third-party
 

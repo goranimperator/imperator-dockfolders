@@ -25,7 +25,6 @@ struct PillIconButton: View {
             .opacity(hovered ? 0.85 : 1.0)
         }
         .buttonStyle(.plain)
-        .offset(x: -1)
         .onHover { h in
             withAnimation(.easeInOut(duration: 0.1)) {
                 hovered = h

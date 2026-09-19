@@ -177,6 +177,33 @@ To install on another Mac: import the `.p12`, unzip the built `.app` into `/Appl
 - Dock icon cache occasionally needs a manual `killall Dock` / `lsregister` to refresh after a major change.
 - App is arm64-only. `xcodebuild` builds for the host arch; a universal build needs `ARCHS="arm64 x86_64"` (the mousepos build phase already loops over `ARCHS`).
 
+## Toolchain and SDK (macOS 27)
+
+AppKit chooses a control's generation from the `sdk` field in `LC_BUILD_VERSION`, not from the
+running macOS. An old stamp means old-looking controls forever. This is an Xcode project, so the
+stamp follows the SDK Xcode builds against: Xcode 27 gives `sdk 27.0` while `MACOSX_DEPLOYMENT_TARGET`
+keeps `minos 14.0`. No manifest change is needed and the macOS 14 minimum stays, which matters
+because the repo is public. Verify after any toolchain change:
+
+```bash
+otool -l "build/dd/Build/Products/Release/Imperator DockFolders.app/Contents/MacOS/Imperator DockFolders" | awk '/LC_BUILD_VERSION/,/^$/' | grep -E "minos|sdk"
+```
+
+Expect `minos 14.0` and `sdk 27.0`. If `sdk` equals `minos`, the build used an old toolchain.
+
+Toggle rules that follow from this (BrandBook 7.2):
+- `.toggleStyle(.switch)`, `.scaleEffect(0.55)`, `.tint(AppColors.brand)`, `.labelsHidden()`.
+- **No toggle ever gets a cursor modifier.** Switches keep the system arrow, the way System
+  Settings behaves. This covers the toggle, its label and the HStack wrapping them.
+- `scaleEffect` scales only the rendering; the switch still claims 54x24pt in layout. Where a
+  switch shares a right edge with other controls (the sidebar settings rows), give it
+  `.frame(width: 54 * 0.55, height: 24 * 0.55)` so layout matches what is drawn, then put every
+  trailing control in a shared `.frame(width: trailingControlWidth, alignment: .trailing)`.
+  Without that the drawn capsule sits ~12pt short of the pills and the column looks ragged.
+  A left-aligned row with no shared edge (the footer `LaunchAtLoginToggle`) needs no frame.
+- The old `.frame(width: 36, height: 20)` is wrong and must not come back: it is neither the
+  drawn size nor the layout size.
+
 ## Release
 
 `origin` is GitHub: `git@github.com:goranimperator/imperator-dockfolders.git`. Releases are cut
@@ -185,6 +212,14 @@ explicit word. Version lives in `MARKETING_VERSION` in `project.pbxproj`; `CURRE
 is the commit count INCLUDING the release commit — `git rev-list --count HEAD` plus one, since
 that commit does not exist yet when the target stamps the number. `make release` does this;
 `RELEASE_BUILD_NUMBER` in the Makefile is the value, not `BUILD_NUMBER`.
+
+**Every release includes a README pass, before anything is tagged.** Not optional, not a
+nice-to-have — Goran has called this out explicitly. Walk the README section by section against
+what actually changed and verify each claim against the code: install steps, requirements,
+permissions (what is asked for AND the table of what is not), the Use bullets, build commands
+and build phases, the layout tree, third-party. Do the same for this file. Then report what was
+stale and what was corrected. A release whose README still describes the previous version ships
+wrong instructions to everyone who downloads it.
 
 ## Popup latency (resolved 2026-08-15)
 

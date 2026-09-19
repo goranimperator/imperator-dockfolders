@@ -451,6 +451,7 @@ struct FolderPopupView: View {
                             .fill(index == safePage ? Color.white.opacity(0.9) : Color.white.opacity(0.25))
                             .frame(width: 7, height: 7)
                             .onTapGesture { goToPage(index) }
+                            .cursor(.pointingHand)
                     }
                 }
                 .padding(.bottom, 18)
@@ -458,7 +459,7 @@ struct FolderPopupView: View {
         }
         .background(
             VisualEffectBackground()
-                .clipShape(PopupShape(cornerRadius: 28, arrowX: arrowX))
+                .clipShape(PopupShape(cornerRadius: 18, arrowX: arrowX))
         )
         .clipped()
         .onReceive(NotificationCenter.default.publisher(for: .popupNextPage)) { _ in
@@ -549,6 +550,7 @@ struct FolderPopupView: View {
             NSWorkspace.shared.open(app.url)
             onDismiss()
         }
+        .cursor(.pointingHand)
     }
 }
 

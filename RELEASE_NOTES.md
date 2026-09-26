@@ -1,9 +1,11 @@
-Cursor behaviour now matches the rest of macOS.
+Cursor behaviour and the popup corner now match the rest of macOS.
 
 - Nothing in the app changes the pointer on hover. App tiles in the Dock popup, rows in the app
   picker and the page dots all keep the ordinary arrow, the way Finder and System Settings
   behave. The picker still shows a not-allowed cursor for apps already in the folder, which is
   the one case where the pointer carries real information.
+- The Dock popup's corner radius matches the Imperator menu bar panels exactly, so the two read
+  as the same surface next to each other.
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on
 macOS 27 only: older versions are expected to work but have not been verified.

@@ -2,6 +2,20 @@ import SwiftUI
 import AppKit
 
 struct PopupShape: Shape {
+    /// Matches the panel radius every Imperator menu bar app uses
+    /// (`MenuBarPanel.cornerRadius`), so the Dock popup and the menu bar panels
+    /// read as the same surface.
+    ///
+    /// 18.25 rather than 17.5 because `NSVisualEffectView` blends its edge, so
+    /// the drawn corner measures about 0.75 pt tighter than the radius asked
+    /// for. Measured on the menu bar panels: at 17.5 it drew 16.75, at 18.25 it
+    /// draws 17.50, which is what macOS 27 draws on its own panels. This popup
+    /// sits on the same `.hudWindow` effect view, so it needs the same
+    /// compensation.
+    ///
+    /// The arcs below are circular, matching `cornerCurve = .circular` there.
+    static let brandCornerRadius: CGFloat = 18.25
+
     let cornerRadius: CGFloat
     let arrowX: CGFloat
 
@@ -458,7 +472,7 @@ struct FolderPopupView: View {
         }
         .background(
             VisualEffectBackground()
-                .clipShape(PopupShape(cornerRadius: 18, arrowX: arrowX))
+                .clipShape(PopupShape(cornerRadius: PopupShape.brandCornerRadius, arrowX: arrowX))
         )
         .clipped()
         .onReceive(NotificationCenter.default.publisher(for: .popupNextPage)) { _ in

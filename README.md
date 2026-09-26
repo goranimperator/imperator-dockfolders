@@ -29,13 +29,17 @@ macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT
 2. Drag **Imperator DockFolders.app** into `/Applications`. It has to live there — the launcher
    bundles start the app by bundle identifier, and Launch Services resolves that most reliably
    from `/Applications`.
-3. The app is signed with a self-signed certificate, not an Apple Developer ID, and it is not
-   notarized. Gatekeeper will block the first launch. Right-click the app and choose **Open**,
-   then confirm. If macOS still refuses:
+3. Builds carry no Apple Developer ID and are not notarized, so Gatekeeper blocks the first
+   launch. Right-click the app and choose **Open**, then confirm. If macOS still refuses, clear
+   the quarantine flag once:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Imperator DockFolders.app"
 ```
+
+   The app is signed, just with a self-signed certificate rather than a Developer ID. That is
+   deliberate: a stable signature is what lets macOS keep your Accessibility grant across
+   updates.
 
 4. Launch it and grant Accessibility when asked. See below for exactly what that is for.
 

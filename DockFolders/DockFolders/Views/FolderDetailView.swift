@@ -641,7 +641,6 @@ struct AppGridCarousel: View {
                             currentPage = index
                         }
                     }
-                    .cursor(.pointingHand)
             }
         }
     }

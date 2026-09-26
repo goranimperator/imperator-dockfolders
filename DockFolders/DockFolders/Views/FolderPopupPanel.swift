@@ -451,7 +451,6 @@ struct FolderPopupView: View {
                             .fill(index == safePage ? Color.white.opacity(0.9) : Color.white.opacity(0.25))
                             .frame(width: 7, height: 7)
                             .onTapGesture { goToPage(index) }
-                            .cursor(.pointingHand)
                     }
                 }
                 .padding(.bottom, 18)
@@ -550,7 +549,6 @@ struct FolderPopupView: View {
             NSWorkspace.shared.open(app.url)
             onDismiss()
         }
-        .cursor(.pointingHand)
     }
 }
 

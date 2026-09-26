@@ -103,7 +103,7 @@ struct AppPickerView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .contentShape(Rectangle())
-        .cursor(alreadyAdded ? .operationNotAllowed : .pointingHand)
+        .cursor(alreadyAdded ? .operationNotAllowed : .arrow)
         .onTapGesture {
             guard !alreadyAdded else { return }
             if isSelected {

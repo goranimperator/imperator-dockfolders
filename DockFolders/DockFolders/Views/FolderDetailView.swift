@@ -152,7 +152,8 @@ struct GridSettingsBar: View {
     @State private var resetLabelsHovered = false
 
     private let columnOptions = [2, 3, 4]
-    private let pageOptions = [4, 6, 8, 9, 12, 16]
+    // 20 fills a four-column grid five rows deep.
+    private let pageOptions = [4, 6, 8, 9, 12, 16, 20]
 
     var body: some View {
         HStack(spacing: 20) {

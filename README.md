@@ -7,7 +7,7 @@
 ---
 
 Group the apps you actually use into a folder, put that folder in the Dock, and click it to get
-a grid of those apps. Not a Finder stack of aliases — a real popup you lay out yourself: your
+a grid of those apps. Not a Finder stack of aliases, but a real popup you lay out yourself: your
 own order, your own labels, your own grid size, paged if you want more than fits.
 
 macOS lets you drag a folder to the right side of the Dock and get a stack. DockFolders puts
@@ -26,7 +26,7 @@ macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT
 
 1. Download the zip from [Releases](https://github.com/goranimperator/imperator-dockfolders/releases)
    and unpack it.
-2. Drag **Imperator DockFolders.app** into `/Applications`. It has to live there — the launcher
+2. Drag **Imperator DockFolders.app** into `/Applications`. It has to live there: the launcher
    bundles start the app by bundle identifier, and Launch Services resolves that most reliably
    from `/Applications`.
 3. Builds carry no Apple Developer ID and are not notarized, so Gatekeeper blocks the first
@@ -48,7 +48,7 @@ xattr -dr com.apple.quarantine "/Applications/Imperator DockFolders.app"
 DockFolders asks for **one** system permission, and it degrades gracefully without it. Here is
 every permission-relevant thing the app does, and why.
 
-### Accessibility — asked for, optional
+### Accessibility: asked for, optional
 
 **System Settings → Privacy & Security → Accessibility**
 
@@ -70,7 +70,7 @@ the popup falls back to the mouse position captured at click time, which for a D
 within a few pixels of the icon anyway. You can grant it later, or never.
 
 macOS remembers this grant against the app's code signature. DockFolders ships signed with a
-stable self-signed certificate specifically so the grant survives updates — reinstalling a newer
+stable self-signed certificate specifically so the grant survives updates; reinstalling a newer
 build does not make you re-tick the box.
 
 ### Not asked for, and not needed
@@ -100,13 +100,13 @@ launcher bundles. Deleting that directory resets the app completely.
 
 Outside of that, the app writes to exactly two places:
 
-- **`com.apple.dock` preferences** — adds and removes its launcher bundles from the Dock's
+- **`com.apple.dock` preferences**: adds and removes its launcher bundles from the Dock's
   `persistent-apps` array. It only ever touches entries pointing at its own launchers.
-- **`/tmp/dockfolders_open`** — a one-line handoff file. A launcher writes the folder name and
+- **`/tmp/dockfolders_open`**: a one-line handoff file. A launcher writes the folder name and
   the mouse position there, posts a Darwin notification, and the app reads the file and deletes
   it immediately.
 
-### Login item — only if you turn it on
+### Login item: only if you turn it on
 
 **Settings → General → Open at login** registers the app with `SMAppService`. It shows up in
 System Settings → General → Login Items like any other, and the toggle removes it. Off by
@@ -122,7 +122,8 @@ default.
 - **Double-click** a folder name or an app label to rename it. Custom labels are yours and stay
   put; the underlying app is untouched.
 - **Drag** apps to reorder. The folder icon regenerates to match.
-- **Grid** controls set columns and items per page. More apps than fit means pages.
+- **Grid** controls set the columns (2, 3 or 4) and the apps per page (4, 6, 8, 9, 12, 16 or 20;
+  20 fills four columns by five rows). More apps than fit means pages.
 - **Cut app names** in the toolbar truncates long labels to one line instead of wrapping to
   two. Custom labels you typed yourself always render in full, whichever way the toggle is set.
 - **Swipe** horizontally on a trackpad inside the popup to page through.
@@ -165,7 +166,7 @@ Two build phases matter:
   is what makes the Accessibility grant survive an update. Building without it in your keychain
   works, but every new build will ask for Accessibility again.
 
-Deploy over an existing install with `rm -rf` first — a plain `cp -R` will not replace the old
+Deploy over an existing install with `rm -rf` first: a plain `cp -R` will not replace the old
 bundle:
 
 ```bash
@@ -229,7 +230,7 @@ make verify VERSION=x.y.z
 make release VERSION=x.y.z
 ```
 
-`dist` is safe — it touches nothing in git and nothing on the remote, so use it to build a test
+`dist` is safe: it touches nothing in git and nothing on the remote, so use it to build a test
 zip. `verify` unpacks the zip and checks the app inside it, which is the one people download.
 `release` is the irreversible one.
 

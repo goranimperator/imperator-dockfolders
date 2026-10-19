@@ -1,4 +1,5 @@
-Cursor behaviour and the popup corner now match the rest of macOS.
+Cursor behaviour and the popup corner now match the rest of macOS, and a folder can show 20 apps
+per page.
 
 - Nothing in the app changes the pointer on hover. App tiles in the Dock popup, rows in the app
   picker and the page dots all keep the ordinary arrow, the way Finder and System Settings
@@ -6,6 +7,7 @@ Cursor behaviour and the popup corner now match the rest of macOS.
   the one case where the pointer carries real information.
 - The Dock popup's corner radius matches the Imperator menu bar panels exactly, so the two read
   as the same surface next to each other.
+- Per page now goes up to 20, which fills a four-column grid five rows deep.
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on
 macOS 27 only: older versions are expected to work but have not been verified.

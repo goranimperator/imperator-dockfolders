@@ -8,6 +8,8 @@ per page.
 - The Dock popup's corner radius matches the Imperator menu bar panels exactly, so the two read
   as the same surface next to each other.
 - Per page now goes up to 20, which fills a four-column grid five rows deep.
+- Folder rows in the sidebar now show a proper drag grip, two columns of three dots, in place of
+  the hamburger glyph that ran the full width of the column beside the folder icon.
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on
 macOS 27 only: older versions are expected to work but have not been verified.

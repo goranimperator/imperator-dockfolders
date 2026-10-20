@@ -13,9 +13,8 @@ struct FolderListView: View {
         List(selection: $selectedFolder) {
             ForEach(store.folders) { folder in
                 HStack(spacing: 8) {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.tertiary)
+                    DragGrip(hovered: hoveredFolder == folder.id)
+                        .help("Drag to reorder")
 
                     Image(systemName: "folder.fill")
                         .font(.system(size: 14))
@@ -68,7 +67,9 @@ struct FolderListView: View {
                     }
                 }
                 .onHover { hovering in
-                    hoveredFolder = hovering ? folder.id : nil
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        hoveredFolder = hovering ? folder.id : nil
+                    }
                 }
                 .tag(folder)
                 .contextMenu {

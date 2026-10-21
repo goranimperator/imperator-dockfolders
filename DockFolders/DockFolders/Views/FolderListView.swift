@@ -9,6 +9,17 @@ struct FolderListView: View {
     @State private var hoveredFolder: String?
     @FocusState private var isRenameFieldFocused: Bool
 
+    /// Whitespace around a row's fill: at the sidebar edges and between rows.
+    private static let gap: CGFloat = 8
+    /// Where the row's content sits, matching the settings rows above the list.
+    private static let contentMargin: CGFloat = 20
+    /// Where the row box lands inside the sidebar, measured on macOS 27 with
+    /// listRowInsets zeroed. The trailing side is wider because of the
+    /// scroller gutter. The outer padding below is what is left to reach
+    /// Self.gap, so one re-measure fixes the row if AppKit changes them.
+    private static let boxInsetLeading: CGFloat = 8
+    private static let boxInsetTrailing: CGFloat = 9.5
+
     var body: some View {
         // No selection: binding. The list's own highlight draws the full row
         // width behind listRowBackground, so the brand pill (inset 6pt) left a
@@ -86,6 +97,28 @@ struct FolderListView: View {
                         hoveredFolder = hovering ? folder.id : nil
                     }
                 }
+                // Inner padding, inside the fill. Reaches the 20pt margin the
+                // settings rows above the list use, so the grip lines up with
+                // their labels and the dock indicator with their toggles.
+                .padding(.leading, Self.contentMargin - Self.gap)
+                .padding(.trailing, Self.contentMargin - Self.gap)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // The fill rides on the content, not on listRowBackground: that
+                // one is clipped to the row box, whose trailing edge the list
+                // keeps a few points inside the sidebar, so the right margin
+                // could never be made to match the left.
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSelected ? AppColors.brand : Color.clear)
+                )
+                // Outer padding: whatever is left to make the visible
+                // whitespace Self.gap on every side.
+                .padding(.leading, Self.gap - Self.boxInsetLeading)
+                .padding(.trailing, Self.gap - Self.boxInsetTrailing)
+                .padding(.vertical, Self.gap / 2)
+                // Hit testing goes last, so the whole padded row selects, not
+                // just the area the labels happen to cover.
                 .contentShape(Rectangle())
                 .onTapGesture { selectedFolder = folder }
                 .contextMenu {
@@ -97,30 +130,13 @@ struct FolderListView: View {
                         folderToDelete = folder
                     }
                 }
-                // The list keeps its own row insets even when listRowInsets is
-                // zeroed: measured 8pt leading and 13pt trailing. These values
-                // are what is left to reach the 20pt margin the settings rows
-                // above the list use, so the grip lines up with their labels and
-                // the dock indicator with their toggles.
-                .padding(.leading, 12)
-                .padding(.trailing, 10)
-                .padding(.vertical, 6)
-                // 4pt top and bottom gives an 8pt gap between neighbouring rows;
-                // the List's own 4pt vertical padding repeats it before the
-                // first row and after the last.
-                .padding(.vertical, 4)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                 .listRowSeparator(.hidden)
                 // Paint the selection fill here rather than letting the list
                 // draw it. The .sidebar style renders its tint through the
                 // sidebar material, which lightens #A01818 into a salmon; this
                 // puts the brand red down flat, edge to edge.
-                .listRowBackground(
-                    // 6pt, the radius the stock macOS buttons in the detail
-                    // header draw and what BrandBook 13 specifies for rows.
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? AppColors.brand : Color.clear)
-                )
+                .listRowBackground(Color.clear)
             }
             .onMove { from, to in
                 var reordered = store.folders
@@ -133,7 +149,7 @@ struct FolderListView: View {
         // actually seen.
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .padding(.vertical, 4)
+        .padding(.vertical, Self.gap / 2)
         .frame(minWidth: 200)
         .onChange(of: isRenameFieldFocused) { _, focused in
             if !focused, let folder = editingFolder {

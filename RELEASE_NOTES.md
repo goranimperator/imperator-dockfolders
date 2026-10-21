@@ -6,8 +6,11 @@ Sidebar rework: new row layout, brand-red selection, and a fifth column option.
 - Selecting a row fills it with the Imperator red at a 6pt corner radius and turns everything in
   it white. The list used to tint the system highlight instead, which rendered the red through
   the sidebar material and came out salmon.
-- Rows are separated by 8pt, including before the first and after the last, and line up with the
-  settings rows above them.
+- Rows are separated by 8pt, including before the first and after the last, and the selection
+  fill keeps the same 8pt clear of the sidebar edges rather than bleeding into them. The grip
+  and folder icon line up with the labels in the settings rows above, the dock indicator with
+  their toggles.
+- Clicking anywhere on a row selects it, including the padding around the labels.
 - The sidebar's own title is gone; the window already carries it in the title bar.
 - The sidebar toggle is gone from the toolbar. Drag the split to resize instead.
 - Open at Login sits in the sidebar footer.

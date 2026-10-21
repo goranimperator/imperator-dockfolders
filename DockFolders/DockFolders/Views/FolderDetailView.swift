@@ -151,7 +151,7 @@ struct GridSettingsBar: View {
     @EnvironmentObject var store: FolderStore
     @State private var resetLabelsHovered = false
 
-    private let columnOptions = [2, 3, 4]
+    private let columnOptions = [2, 3, 4, 5]
     // 20 fills a four-column grid five rows deep.
     private let pageOptions = [4, 6, 8, 9, 12, 16, 20]
 
@@ -653,9 +653,11 @@ struct DeleteBadge: View {
 
     var body: some View {
         Button(action: action) {
+            // White glyph on a brand-red disc: hierarchical foregroundStyle takes
+            // the mark first, the fill second.
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 21, weight: .bold))
-                .foregroundStyle(Color(red: 0.27, green: 0.0, blue: 0.0), Color(red: 1.0, green: 0.37, blue: 0.34))
+                .foregroundStyle(.white, AppColors.brand)
                 .scaleEffect(isHovered ? 1.2 : 1.0)
                 .animation(.easeOut(duration: 0.15), value: isHovered)
         }

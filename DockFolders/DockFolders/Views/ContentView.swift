@@ -4,7 +4,6 @@ struct ContentView: View {
     @EnvironmentObject var store: FolderStore
     @State private var selectedFolder: DockFolder?
     @State private var showNewFolderSheet = false
-    @State private var showSidebar = true
     @State private var addFolderHovered = false
     @State private var refreshSpinAngle: Double = 0
     @State private var showResetNamesAlert = false
@@ -18,19 +17,8 @@ struct ContentView: View {
 
     var body: some View {
         HSplitView {
-            if showSidebar {
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Imperator DockFolders")
-                            .font(.system(size: 13, weight: .semibold))
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-
-                    Divider()
-
-                    VStack(spacing: 8) {
+            VStack(spacing: 0) {
+                VStack(spacing: 8) {
                         HStack {
                             Text("Cut app names")
                                 .font(.system(size: 12))
@@ -124,7 +112,6 @@ struct ContentView: View {
                     .padding(.vertical, 10)
                 }
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 300)
-            }
 
             if let folder = selectedFolder {
                 FolderDetailView(folder: folder, selectedFolder: $selectedFolder)
@@ -133,16 +120,6 @@ struct ContentView: View {
                 Text("Select a folder")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Spacer()
-            }
-            ToolbarItem(placement: .automatic) {
-                Button(action: { withAnimation { showSidebar.toggle() } }) {
-                    Label("Toggle Sidebar", systemImage: "sidebar.leading")
-                }
             }
         }
         .sheet(isPresented: $showNewFolderSheet) {

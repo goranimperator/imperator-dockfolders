@@ -122,7 +122,7 @@ default.
 - **Double-click** a folder name or an app label to rename it. Custom labels are yours and stay
   put; the underlying app is untouched.
 - **Drag** apps to reorder. The folder icon regenerates to match.
-- **Grid** controls set the columns (2, 3 or 4) and the apps per page (4, 6, 8, 9, 12, 16 or 20;
+- **Grid** controls set the columns (2, 3, 4 or 5) and the apps per page (4, 6, 8, 9, 12, 16 or 20;
   20 fills four columns by five rows). More apps than fit means pages.
 - **Cut app names** in the toolbar truncates long labels to one line instead of wrapping to
   two. Custom labels you typed yourself always render in full, whichever way the toggle is set.
@@ -191,7 +191,7 @@ DockFolders/DockFolders/
     AppColors.swift         brand tokens
   Views/
     FolderPopupPanel.swift  the Dock popup: NSPanel subclass, arrow shape, paged app grid
-    ContentView.swift       main window shell, toolbar, sidebar split
+    ContentView.swift       main window shell, sidebar split
     FolderListView.swift    sidebar list of folders
     FolderDetailView.swift  folder editor: app grid, drag-reorder, inline rename
     AppPickerView.swift     picker for adding installed apps
@@ -200,6 +200,8 @@ DockFolders/DockFolders/
     HoverButton.swift       shared hover button (BrandBook)
     PillIconButton.swift    shared pill icon button (BrandBook)
     ViewExtensions.swift    shared view helpers (BrandBook)
+    DragGrip.swift          the drag-to-reorder grip on sidebar rows
+    FolderGlyph.swift       the folder outline drawn on sidebar rows
   Resources/                AppIcon.icns, asset catalog
 MouseLocation/main.swift    the launcher helper source
 ```

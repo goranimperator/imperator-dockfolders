@@ -14,15 +14,17 @@ import SwiftUI
 /// Do not swap this for a stock symbol. `line.3.horizontal` and the other
 /// hamburger glyphs run the full width of a column next to the row's folder
 /// icon; this grip is 8.5pt wide.
+///
+/// Colour comes from the caller, so the grip follows the rest of the row (grey
+/// at rest, white on a selected row) rather than fighting it with its own.
 struct DragGrip: View {
-    /// At rest the grip sits at the weight of the secondary text beside it, so a
-    /// row reads as one line rather than a control with a label after it.
-    /// Hovering the row brings it up to the weight of the row's other buttons.
-    var hovered: Bool
-
     private static let dot: CGFloat = 3.5
     private static let columnGap: CGFloat = 1.5
     private static let rowGap: CGFloat = 2.5
+
+    /// Three dot rows plus the two gaps between them: 15.5pt. Exposed so the
+    /// glyph beside the grip can match its height exactly.
+    static let height: CGFloat = dot * 3 + rowGap * 2
 
     var body: some View {
         VStack(spacing: Self.rowGap) {
@@ -33,11 +35,5 @@ struct DragGrip: View {
                 }
             }
         }
-        // Keep this animation on the grip, never on an enclosing Button. A
-        // .animation(_:value:) on the button animates its whole label, image
-        // included, and SwiftUI cross-fades the image on every hover: it reads
-        // as the icon blinking.
-        .foregroundStyle(hovered ? AnyShapeStyle(Color.gray) : AnyShapeStyle(.tertiary))
-        .animation(.easeInOut(duration: 0.3), value: hovered)
     }
 }

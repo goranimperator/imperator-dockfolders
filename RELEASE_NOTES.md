@@ -1,15 +1,19 @@
-Cursor behaviour and the popup corner now match the rest of macOS, and a folder can show 20 apps
-per page.
+Sidebar rework: new row layout, brand-red selection, and a fifth column option.
 
-- Nothing in the app changes the pointer on hover. App tiles in the Dock popup, rows in the app
-  picker and the page dots all keep the ordinary arrow, the way Finder and System Settings
-  behave. The picker still shows a not-allowed cursor for apps already in the folder, which is
-  the one case where the pointer carries real information.
-- The Dock popup's corner radius matches the Imperator menu bar panels exactly, so the two read
-  as the same surface next to each other.
-- Per page now goes up to 20, which fills a four-column grid five rows deep.
-- Folder rows in the sidebar now show a proper drag grip, two columns of three dots, in place of
-  the hamburger glyph that ran the full width of the column beside the folder icon.
+- Folder rows carry a drag grip, two columns of three dots, in place of the hamburger glyph that
+  ran the full width of the column. The folder icon beside it is a drawn outline matching the
+  grip's height, and both sit at the same weight as the dock indicator on the right.
+- Selecting a row fills it with the Imperator red at a 6pt corner radius and turns everything in
+  it white. The list used to tint the system highlight instead, which rendered the red through
+  the sidebar material and came out salmon.
+- Rows are separated by 8pt, including before the first and after the last, and line up with the
+  settings rows above them.
+- The sidebar's own title is gone; the window already carries it in the title bar.
+- The sidebar toggle is gone from the toolbar. Drag the split to resize instead.
+- Open at Login sits in the sidebar footer.
+- Per row now offers 5, which pairs with 20 per page for a four-row grid.
+- Removing an app shows a white cross on an Imperator red disc.
+- Deleting a folder uses a trash icon rather than a cross in a ring.
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on
 macOS 27 only: older versions are expected to work but have not been verified.

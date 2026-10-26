@@ -13,7 +13,6 @@
 		A10004 /* FolderDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10004; };
 		A10005 /* AppPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10005; };
 		A10006 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10006; };
-		A10007 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10007; };
 		A10010 /* DockFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10010; };
 		A10011 /* AppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10011; };
 		A10020 /* FolderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10020; };
@@ -40,7 +39,6 @@
 		B10004 /* FolderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDetailView.swift; sourceTree = "<group>"; };
 		B10005 /* AppPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPickerView.swift; sourceTree = "<group>"; };
 		B10006 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		B10007 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		B10010 /* DockFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockFolder.swift; sourceTree = "<group>"; };
 		B10011 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEntry.swift; sourceTree = "<group>"; };
 		B10020 /* FolderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderStore.swift; sourceTree = "<group>"; };
@@ -127,7 +125,6 @@
 				B10004 /* FolderDetailView.swift */,
 				B10005 /* AppPickerView.swift */,
 				B10006 /* SettingsView.swift */,
-				B10007 /* MenuBarView.swift */,
 				B10009 /* FolderPopupPanel.swift */,
 				B10040 /* PillIconButton.swift */,
 				B10042 /* HoverButton.swift */,
@@ -263,7 +260,6 @@
 				A10004 /* FolderDetailView.swift in Sources */,
 				A10005 /* AppPickerView.swift in Sources */,
 				A10006 /* SettingsView.swift in Sources */,
-				A10007 /* MenuBarView.swift in Sources */,
 				A10010 /* DockFolder.swift in Sources */,
 				A10011 /* AppEntry.swift in Sources */,
 				A10020 /* FolderStore.swift in Sources */,

@@ -123,6 +123,32 @@ Both track `event.phase` + `momentumPhase`, fire once per gesture, and require h
 
 System apps like Safari, Mail, and Maps live behind Cryptex symlinks on macOS 15+. URL-based `FileManager.contentsOfDirectory(at:includingPropertiesForKeys:)` silently skips these. `AppDiscovery.swift` uses the string-based `contentsOfDirectory(atPath:)` API instead, and `AppEntry.cachedIcon` + `AppPickerView.PickerApp.init` both call `.resolvingSymlinksInPath()` before reading the icon so Cryptex-mounted apps return the correct appearance-aware artwork. See BrandBook section 22.
 
+### App discovery and external drives
+
+`AppDiscovery.installedApps()` walks four fixed paths (`/Applications`, `/System/Applications`,
+`~/Applications`, Xcode's bundled apps) with no depth limit, plus every mounted external volume
+capped at three levels below the volume root. The cap is what makes scanning a volume safe at
+all: a drive is a whole filesystem, not a curated `/Applications`.
+
+Volumes are filtered on resource keys, and each exclusion earns its place: the root filesystem is
+already covered by the fixed paths, a non-local volume would let `contentsOfDirectory` block for
+as long as a network server takes to answer, and non-browsable or internal volumes are not what
+"external drive" promises. `Backups.backupdb` is never descended into. `VolumeScanSettings`
+(same file) holds the master switch, default on, and the per-volume exclusions, keyed by volume
+NAME so the choice survives unplugging the drive.
+
+The scan runs in a detached task from `AppPickerView`; it used to run synchronously in
+`.onAppear`, which froze the sheet. `Choose Apps` in the picker is an `NSOpenPanel` and is the
+answer to anything the scan cannot reach, so do not raise the depth cap to chase a stray case.
+
+### The app has no menu bar icon, and the MenuBarExtra scene must stay
+
+`DockFoldersApp.body` declares a `MenuBarExtra` with `isInserted: .constant(false)`. It puts
+nothing in the menu bar, and it is not dead code. The app's windows are built in `AppDelegate`
+rather than by a scene, so with only a `Settings` scene SwiftUI gives the app no main menu at
+all: no `Settings…` item, no Cmd-comma, and `NSApp.activate` stops bringing the app forward.
+Deleting that scene as cleanup breaks all three.
+
 ## Inline editing pattern (double-click to rename)
 
 Folder name in the sidebar, folder name in the detail header, and per-app label in the grid all use the same flow:

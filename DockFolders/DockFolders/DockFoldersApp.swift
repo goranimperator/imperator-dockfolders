@@ -257,14 +257,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
 @main
 struct DockFoldersApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @AppStorage("showMenuBarExtra") private var showMenuBarExtra: Bool = true
 
     var body: some Scene {
-        MenuBarExtra("Imperator DockFolders", systemImage: "square.grid.2x2", isInserted: $showMenuBarExtra) {
-            MenuBarView()
-                .environmentObject(appDelegate.store)
+        // The app shows no menu bar icon, and its windows are built in
+        // AppDelegate rather than by a scene, which leaves SwiftUI nothing to
+        // hang the main menu on: with only a Settings scene the app gets no
+        // menu bar at all, so there is no Settings… item, no Cmd-comma, and
+        // NSApp.activate stops bringing the app forward. This scene exists for
+        // that menu alone. isInserted is a constant false, so nothing is ever
+        // put in the menu bar.
+        MenuBarExtra("Imperator DockFolders", systemImage: "square.grid.2x2", isInserted: .constant(false)) {
+            EmptyView()
         }
-        .menuBarExtraStyle(.window)
 
         Settings {
             SettingsView()

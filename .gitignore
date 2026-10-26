@@ -25,3 +25,6 @@ sf-symbols-preview.html
 
 # Prebuilt helper: produced by the "Build mousepos Helper" build phase.
 MouseLocation/mousepos
+
+# Knowledge-graph build output: regenerated from the repo, not part of the app.
+graphify-out/

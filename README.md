@@ -114,11 +114,13 @@ default.
 
 ## Use
 
-- **Menu bar icon** (grid symbol) opens the folder list. Turn it off in Settings if you prefer
-  the main window only.
 - **Open at Login** sits in the sidebar footer as well as in Settings; both drive the same
   `SMAppService` registration.
 - **New folder** in the main window, then **Add apps** to pick from everything installed.
+- **External drives** are scanned too, on the drive itself and up to three folders down. Turn
+  the scan off, or switch off one drive at a time, in **Settings → External Drives**. **Choose
+  Apps** in the picker opens a file dialog and reaches an app anywhere, however deep and on any
+  volume.
 - **Double-click** a folder name or an app label to rename it. Custom labels are yours and stay
   put; the underlying app is untouched.
 - **Drag** apps to reorder. The folder icon regenerates to match.
@@ -186,7 +188,7 @@ DockFolders/DockFolders/
     DockController.swift    reads/writes com.apple.dock persistent-apps
     LauncherGenerator.swift generates the launcher .app bundles
     IconGenerator.swift     renders the 1024x1024 folder icons
-    AppDiscovery.swift      scans the application directories
+    AppDiscovery.swift      scans the application directories and external drives
     DockIconLocator.swift   Accessibility lookup of the Dock tile position
     AppColors.swift         brand tokens
   Views/
@@ -196,7 +198,6 @@ DockFolders/DockFolders/
     FolderDetailView.swift  folder editor: app grid, drag-reorder, inline rename
     AppPickerView.swift     picker for adding installed apps
     SettingsView.swift      Settings window
-    MenuBarView.swift       menu bar extra content
     HoverButton.swift       shared hover button (BrandBook)
     PillIconButton.swift    shared pill icon button (BrandBook)
     ViewExtensions.swift    shared view helpers (BrandBook)
@@ -248,6 +249,10 @@ zip. `verify` unpacks the zip and checks the app inside it, which is the one peo
   icon.
 - Folders live at a fixed path, `~/Library/Application Support/DockFolders/`. It is not
   configurable.
+- An app on a drive that is not connected drops out of its folder until the drive is back, and
+  the folder icon regenerates without it.
+- The drive scan reaches three folders below a drive's root. Anything deeper is added with
+  **Choose Apps** in the picker.
 
 ## Third-party
 

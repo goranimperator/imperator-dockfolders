@@ -1,22 +1,25 @@
-Sidebar rework: new row layout, brand-red selection, and a fifth column option.
+Apps on external drives can be added, and the menu bar icon is gone.
 
-- Folder rows carry a drag grip, two columns of three dots, in place of the hamburger glyph that
-  ran the full width of the column. The folder icon beside it is a drawn outline matching the
-  grip's height, and both sit at the same weight as the dock indicator on the right.
-- Selecting a row fills it with the Imperator red at a 6pt corner radius and turns everything in
-  it white. The list used to tint the system highlight instead, which rendered the red through
-  the sidebar material and came out salmon.
-- Rows are separated by 8pt, including before the first and after the last, and the selection
-  fill keeps the same 8pt clear of the sidebar edges rather than bleeding into them. The grip
-  and folder icon line up with the labels in the settings rows above, the dock indicator with
-  their toggles.
-- Clicking anywhere on a row selects it, including the padding around the labels.
-- The sidebar's own title is gone; the window already carries it in the title bar.
-- The sidebar toggle is gone from the toolbar. Drag the split to resize instead.
-- Open at Login sits in the sidebar footer.
-- Per row now offers 5, which pairs with 20 per page for a four-row grid.
-- Removing an app shows a white cross on an Imperator red disc.
-- Deleting a folder uses a trash icon rather than a cross in a ring.
+- The app picker searches mounted external drives as well as the usual application folders. An
+  app is found on the drive itself and up to three folders down, which covers a game sitting
+  loose on an SSD or inside a launcher's own folder. Only the four fixed application paths were
+  searched before, so an app on a drive could not be added at all.
+- Settings has an External Drives section: one switch for the whole scan, on by default, and one
+  switch per connected drive. A drive you switch off stays off when you unplug it and plug it
+  back in.
+- Network volumes, the boot volume and Time Machine stores are never walked. A network share can
+  take as long as the server wants to answer, and a backup store holds every app of every Mac
+  backed up to it.
+- Choose Apps in the picker opens a file dialog and reaches an app anywhere: deeper on a drive
+  than the scan goes, on a network share, or on a drive left out of the scan.
+- The picker searches in the background with a progress indicator instead of freezing while it
+  works, and says so when it finds nothing.
+- The menu bar icon is gone, along with its Settings switch. The app is reached through its Dock
+  folders and its main window.
+- Every switch in Settings is brand red again. They had been rendering in the system grey.
+
+An app on a drive that is not connected drops out of its folder until the drive is back, and the
+folder icon regenerates without it.
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on
 macOS 27 only: older versions are expected to work but have not been verified.

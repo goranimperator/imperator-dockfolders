@@ -186,7 +186,7 @@ security add-trusted-cert -p codeSign -k ~/Library/Keychains/login.keychain-db /
 security find-identity -v -p codesigning   # should show "Imperator Dev"
 ```
 
-To install on another Mac: import the `.p12`, unzip the built `.app` into `/Applications/`, `xattr -cr` to clear quarantine, `open`, then grant Accessibility on first prompt.
+To install on another Mac: import the `.p12`, unzip the built `.app` into `/Applications/`, `xattr -dr com.apple.quarantine` on the app (or Open Anyway in System Settings → Privacy & Security, since right-click Open no longer works), `open`, then grant Accessibility on first prompt.
 
 ## Conventions
 

@@ -30,12 +30,18 @@ macOS cannot vouch for it. It is provided as is, with no warranty, under the MIT
    bundles start the app by bundle identifier, and Launch Services resolves that most reliably
    from `/Applications`.
 3. Builds carry no Apple Developer ID and are not notarized, so Gatekeeper blocks the first
-   launch. Right-click the app and choose **Open**, then confirm. If macOS still refuses, clear
-   the quarantine flag once:
+   launch. The dialog says Apple could not verify the app and offers only **Move to Trash** and
+   **Done**: choose **Done**, not Move to Trash. On current macOS a right-click and **Open** no
+   longer gets past it. Clear the quarantine flag once instead:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Imperator DockFolders.app"
 ```
+
+   Or open **System Settings → Privacy & Security**, scroll down to the line about Imperator
+   DockFolders and click **Open Anyway**, then confirm with your password or Touch ID. That line
+   only appears for a while after a blocked launch, so start the app once first. The flag has to
+   come off the copy you actually start, so do it after the app is in `/Applications`.
 
    The app is signed, just with a self-signed certificate rather than a Developer ID. That is
    deliberate: a stable signature is what lets macOS keep your Accessibility grant across

@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, ObservableObject {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let store = FolderStore()
     private var mainWindow: NSWindow?
 
@@ -78,7 +78,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         }
 
         let contentView = ContentView()
-            .environmentObject(store)
+            .environment(store)
             .frame(minWidth: 600, minHeight: 400)
 
         let window = mainWindow ?? {
@@ -191,7 +191,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.store.reload()
+            // queue: .main delivers on the main thread.
+            MainActor.assumeIsolated { self?.store.reload() }
         }
     }
 
@@ -227,7 +228,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Observable
         if parts.count >= 3,
            let mx = Double(parts[1]),
            let my = Double(parts[2]) {
-            let screenH = NSScreen.main?.frame.height ?? 0
+            // CGEvent coordinates flip against the primary screen, as in the
+            // two paths above; NSScreen.main is the key window's screen.
+            let screenH = NSScreen.screens.first?.frame.height ?? 0
             mousePos = NSPoint(x: mx, y: screenH - my)
         }
 

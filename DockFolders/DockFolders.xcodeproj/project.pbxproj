@@ -350,7 +350,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.dockfolders.app;
 				PRODUCT_NAME = "Imperator DockFolders";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -376,7 +378,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.dockfolders.app;
 				PRODUCT_NAME = "Imperator DockFolders";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};

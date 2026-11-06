@@ -3,7 +3,7 @@ import AppKit
 
 /// Which mounted volumes `AppDiscovery` is allowed to walk. Lives in
 /// UserDefaults so the settings pane and the scan read the same values.
-enum VolumeScanSettings {
+nonisolated enum VolumeScanSettings {
     static let scanEnabledKey = "scanExternalDrives"
     static let excludedVolumesKey = "excludedVolumeNames"
 
@@ -38,7 +38,9 @@ enum VolumeScanSettings {
     }
 }
 
-class AppDiscovery {
+/// Scans from a detached task in the app picker, so it opts out of the
+/// module's default main-actor isolation. File system reads only.
+nonisolated class AppDiscovery {
     /// How many levels below a mounted volume's root the scan descends. A
     /// removable disk is a whole filesystem, not a curated /Applications, so
     /// the walk is capped: Game.app directly on the disk, in a folder on it,

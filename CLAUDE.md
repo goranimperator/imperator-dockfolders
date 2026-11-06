@@ -109,7 +109,7 @@ Do not move the helper compile back to runtime:
 Trackpad swipe navigates one page per gesture. Two implementations because event delivery differs:
 
 - **In the popup**: `PopupPanel.scrollWheel(with:)` override. Global monitors don't fire inside non-activating panels.
-- **In the main app**: `ScrollWheelOverlay` (an `NSViewRepresentable` around an `NSView` that overrides `scrollWheel`) inside `AppGridCarousel`.
+- **In the main app**: `ScrollWheelOverlay` inside `AppGridCarousel`, an `NSViewRepresentable` whose `NSView` installs a local `.scrollWheel` monitor and only checks whether the pointer is over its own bounds. It used to override `scrollWheel(with:)` from behind the grid, which only ever saw scrolls in the gaps between icons: over an icon SwiftUI's own view takes the event and an unused scroll goes up the superview chain, never sideways. The view returns nil from `hitTest`, so it never takes a click.
 
 Both track `event.phase` + `momentumPhase`, fire once per gesture, and require horizontal delta to exceed vertical before registering as a page swipe.
 
@@ -148,6 +148,56 @@ nothing in the menu bar, and it is not dead code. The app's windows are built in
 rather than by a scene, so with only a `Settings` scene SwiftUI gives the app no main menu at
 all: no `Settings…` item, no Cmd-comma, and `NSApp.activate` stops bringing the app forward.
 Deleting that scene as cleanup breaks all three.
+
+### Arranging the grid (iPhone / Launchpad model)
+
+`AppGridCarousel` in `FolderDetailView.swift` is a hand-placed layout driven by a plain
+`DragGesture`, not `onDrag`/`onDrop`. A system drag session floats a translucent snapshot and moves
+nothing until the drop, which is what made the old grid feel broken. Holding an app (380ms) or
+pressing **Arrange** starts arranging: icons wiggle, remove badges appear (only then), the held icon
+lifts and follows the pointer while the others slide out of its way, and resting it at a side edge
+turns the page. **Done**, Escape or a click on empty grid space ends it.
+
+- The wiggle is a `TimelineView` (paused when not arranging), never `repeatForever`: a repeating
+  animation leaks into every change in the same transaction and set the slide-into-slot wobbling.
+- While arranging, reorders and removals pass `refreshDock: false`; the Dock icon is regenerated and
+  the Dock restarted once, when arranging ends. Refreshing per drop ran `killall Dock`
+  synchronously on the main thread: the window froze and the Dock flashed once per moved icon.
+- `reorderable()` / `reorderContainer(for:)` (WWDC26) do the lift-and-placeholder natively but
+  require macOS 27, and do not cover the wiggle mode, the badges or page turning. Revisit only if
+  the minimum is raised to 27.
+
+The sidebar folder list (`FolderListView`) reorders the same way: positioned rows in a
+`ScrollView`, the row lifts and follows the pointer, the others slide, and one write on drop. It
+was a `List` with `.onMove`, which on macOS is the same system drag session. This departs from
+BrandBook 7.18 on purpose. There is no auto-scroll while dragging past the visible rows.
+
+### Multiple displays: never `NSScreen.main`
+
+`NSScreen.main` is the screen with the key window, not the screen the Dock is on. Two rules:
+
+- AX positions and `CGEvent` locations have their origin at the top left of the **primary**
+  screen; flip them against `NSScreen.screens.first`, never `NSScreen.main`. With displays of
+  different heights, the wrong flip put every Dock tile off by the difference, so the popup opened
+  at the wrong height and the click tap missed tiles and fell back to the slow launcher path.
+- The popup clamps and dismisses against the screen holding the clicked Dock icon
+  (`FolderPopupController.currentScreen`), looked up from the icon position.
+
+### Swift 6, main actor by default, Observation
+
+`SWIFT_VERSION = 6.0`, `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` and
+`SWIFT_APPROACHABLE_CONCURRENCY = YES`, the Xcode 27 template defaults: everything is
+`@MainActor` unless it says otherwise, and the compiler rejects data races.
+
+What runs off the main actor says so with `nonisolated`, and each one is there because a detached
+task calls it: `DockFoldersPath`, `GridConfig`, `LauncherGenerator` (launch-time launcher refresh),
+`AppDiscovery` and `VolumeScanSettings` (picker scan), `effectiveIsDark()` (icon redraw), plus the
+`Shape` types SwiftUI calls off the main actor. Anything that touches `NSApp`, a window or a view
+stays on the main actor. `effectiveIsDark()` answers true off the main thread instead of reading
+`NSApp.effectiveAppearance` there: that read was a real data race, and the app forces dark anyway.
+
+`FolderStore` is `@Observable`; views read it with `@Environment(FolderStore.self)`. No
+`ObservableObject`, `@Published` or `@EnvironmentObject` remain.
 
 ## Inline editing pattern (double-click to rename)
 
@@ -207,7 +257,7 @@ To install on another Mac: import the `.p12`, unzip the built `.app` into `/Appl
 
 AppKit chooses a control's generation from the `sdk` field in `LC_BUILD_VERSION`, not from the
 running macOS. An old stamp means old-looking controls forever. This is an Xcode project, so the
-stamp follows the SDK Xcode builds against: Xcode 27 gives `sdk 27.0` while `MACOSX_DEPLOYMENT_TARGET`
+stamp follows the SDK Xcode builds against: Xcode 27.x gives `sdk 27.x` while `MACOSX_DEPLOYMENT_TARGET`
 keeps `minos 14.0`. No manifest change is needed and the macOS 14 minimum stays, which matters
 because the repo is public. Verify after any toolchain change:
 
@@ -215,14 +265,14 @@ because the repo is public. Verify after any toolchain change:
 otool -l "build/dd/Build/Products/Release/Imperator DockFolders.app/Contents/MacOS/Imperator DockFolders" | awk '/LC_BUILD_VERSION/,/^$/' | grep -E "minos|sdk"
 ```
 
-Expect `minos 14.0` and `sdk 27.0`. If `sdk` equals `minos`, the build used an old toolchain.
+Expect `minos 14.0` and `sdk 27.x` (`27.2` with Xcode 27.2). If `sdk` equals `minos`, the build used an old toolchain.
 
 Toggle rules that follow from this (BrandBook 7.2):
 - `.toggleStyle(.switch)`, `.scaleEffect(0.55)`, `.tint(AppColors.brand)`, `.labelsHidden()`.
 - **No toggle ever gets a cursor modifier.** Switches keep the system arrow, the way System
   Settings behaves. This covers the toggle, its label and the HStack wrapping them.
 - `scaleEffect` scales only the rendering; the switch still claims 54x24pt in layout. Where a
-  switch shares a right edge with other controls (the sidebar settings rows), give it
+  switch shares a right edge with other controls (the Folder options rows in the sidebar), give it
   `.frame(width: 54 * 0.55, height: 24 * 0.55)` so layout matches what is drawn, then put every
   trailing control in a shared `.frame(width: trailingControlWidth, alignment: .trailing)`.
   Without that the drawn capsule sits ~12pt short of the pills and the column looks ragged.

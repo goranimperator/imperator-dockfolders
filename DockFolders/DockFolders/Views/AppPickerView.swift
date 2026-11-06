@@ -19,7 +19,7 @@ private struct PickerApp: Identifiable {
 
 struct AppPickerView: View {
     let folder: DockFolder
-    @EnvironmentObject var store: FolderStore
+    @Environment(FolderStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var allApps: [PickerApp] = []

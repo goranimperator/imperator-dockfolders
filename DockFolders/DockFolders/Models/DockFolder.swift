@@ -1,6 +1,6 @@
 import Foundation
 
-struct GridConfig: Codable, Hashable {
+nonisolated struct GridConfig: Codable, Hashable {
     var columns: Int
     var itemsPerPage: Int
 

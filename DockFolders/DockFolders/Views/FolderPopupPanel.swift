@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-struct PopupShape: Shape {
+nonisolated struct PopupShape: Shape {
     /// Matches the panel radius every Imperator menu bar app uses
     /// (`MenuBarPanel.cornerRadius`), so the Dock popup and the menu bar panels
     /// read as the same surface.
@@ -75,6 +75,15 @@ class FolderPopupController {
     private var lastDismissTime: Date?
     private var lastShowTime: Date?
     private var currentPanelWidth: CGFloat = 0
+    /// The screen the popup opened on: the one holding the Dock icon that was
+    /// clicked. Never `NSScreen.main`, which is the screen with the key window
+    /// and has nothing to do with where the Dock is.
+    private var currentScreen: NSScreen?
+
+    private static func screen(containing point: NSPoint?) -> NSScreen? {
+        guard let point else { return nil }
+        return NSScreen.screens.first { $0.frame.contains(point) }
+    }
 
     /// Dismissal for clicks outside the popup. Fed mouse-downs by the app-wide
     /// event tap in AppDelegate (an NSEvent global monitor cannot see clicks in
@@ -184,8 +193,12 @@ class FolderPopupController {
             iconCenterY = nil
         }
 
-        let screen = NSScreen.screens.first(where: { $0.frame.contains(mousePosition) })
-            ?? NSScreen.main ?? NSScreen.screens[0]
+        // The icon says which screen the Dock is on; the click position is the
+        // fallback when Accessibility is not granted.
+        let screen = Self.screen(containing: resolvedIconCenter)
+            ?? Self.screen(containing: mousePosition)
+            ?? NSScreen.screens[0]
+        currentScreen = screen
 
         // Create view with temporary arrowX, measure, then set correct arrowX
         let popupView = FolderPopupView(
@@ -299,7 +312,9 @@ class FolderPopupController {
               let iconCenter = DockIconLocator.shared.iconCenter(forLauncherNamed: folderName)
         else { return }
 
-        let screen = NSScreen.main ?? NSScreen.screens[0]
+        // Looked up per move, not cached: the Dock moves to whichever display
+        // it is summoned on.
+        let screen = Self.screen(containing: iconCenter) ?? currentScreen ?? NSScreen.screens[0]
         var newX = iconCenter.x - currentPanelWidth / 2
         newX = max(screen.frame.origin.x + 4, min(newX, screen.frame.maxX - currentPanelWidth - 4))
 
@@ -319,7 +334,7 @@ class FolderPopupController {
 
         // Keep open if mouse is in the dock area (below the panel)
         if mouse.y < panelFrame.minY {
-            let screen = NSScreen.main ?? NSScreen.screens[0]
+            let screen = currentScreen ?? panel.screen ?? NSScreen.screens[0]
             if mouse.y >= screen.frame.origin.y { return }
         }
 

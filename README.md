@@ -129,11 +129,18 @@ default.
   volume.
 - **Double-click** a folder name or an app label to rename it. Custom labels are yours and stay
   put; the underlying app is untouched.
-- **Drag** apps to reorder. The folder icon regenerates to match.
+- **Arrange** apps the way you would on an iPhone: hold an app (or click **Arrange**) and the
+  icons start to wiggle. Drag one and the others move out of its way; hold it at a side edge to
+  turn the page. The red badge removes an app. **Done**, Escape or a click on empty space stops
+  arranging, and the folder's Dock icon is redrawn once, then.
+- **Drag** folders in the sidebar to reorder them.
 - **Grid** controls set the columns (2, 3, 4 or 5) and the apps per page (4, 6, 8, 9, 12, 16 or 20;
   20 fills four columns by five rows). More apps than fit means pages.
-- **Cut app names** in the toolbar truncates long labels to one line instead of wrapping to
-  two. Custom labels you typed yourself always render in full, whichever way the toggle is set.
+- **Folder options**, under Add Folder in the sidebar, holds three switches that apply to every
+  folder. **Cut app names** keeps long names to one line in the Dock popup; names you typed
+  yourself always show in full. **Refresh all folders** rereads every folder and redraws the
+  icons, for when an app's icon has changed. **Reset app names** removes every name you typed,
+  after asking.
 - **Swipe** horizontally on a trackpad inside the popup to page through.
 - **Add to Dock** builds a launcher bundle with the generated icon and drops it into the Dock.
 - **Escape** or a click anywhere outside closes the popup.
@@ -143,19 +150,20 @@ disk and nothing is moved.
 
 ## Build
 
-Requires Xcode 27 or later. Note the `DEVELOPER_DIR` prefix: a Command Line Tools-only setup
-cannot build this.
+Requires Xcode 27 or later. The project builds in Swift 6 language mode, main actor by default,
+so the compiler rejects data races. Note the `DEVELOPER_DIR` prefix: a Command Line Tools-only
+setup cannot build this.
 
 AppKit picks which generation of a control to draw from the SDK recorded in the binary's
 `LC_BUILD_VERSION`, not from the macOS it runs on. A binary stamped with an old SDK draws
-old-looking switches forever. Building with Xcode 27 stamps `sdk 27.0` while leaving `minos`
+old-looking switches forever. Building with Xcode 27 stamps `sdk 27.x` while leaving `minos`
 at the deployment target, so the app gets current controls without raising its minimum:
 
 ```bash
 otool -l "/Applications/Imperator DockFolders.app/Contents/MacOS/Imperator DockFolders" | awk '/LC_BUILD_VERSION/,/^$/' | grep -E "minos|sdk"
 ```
 
-That must report `minos 14.0` and `sdk 27.0`. If `sdk` equals `minos`, the build used an old
+That must report `minos 14.0` and `sdk 27.x`. If `sdk` equals `minos`, the build used an old
 toolchain and every control in the app is a generation behind.
 
 ```bash
@@ -199,9 +207,9 @@ DockFolders/DockFolders/
     AppColors.swift         brand tokens
   Views/
     FolderPopupPanel.swift  the Dock popup: NSPanel subclass, arrow shape, paged app grid
-    ContentView.swift       main window shell, sidebar split
-    FolderListView.swift    sidebar list of folders
-    FolderDetailView.swift  folder editor: app grid, drag-reorder, inline rename
+    ContentView.swift       main window shell, sidebar split, Folder options
+    FolderListView.swift    sidebar list of folders, drag to reorder
+    FolderDetailView.swift  folder editor: app grid, arranging, inline rename
     AppPickerView.swift     picker for adding installed apps
     SettingsView.swift      Settings window
     HoverButton.swift       shared hover button (BrandBook)
@@ -259,6 +267,9 @@ zip. `verify` unpacks the zip and checks the app inside it, which is the one peo
   the folder icon regenerates without it.
 - The drive scan reaches three folders below a drive's root. Anything deeper is added with
   **Choose Apps** in the picker.
+- Dragging a folder past the rows you can see does not scroll the sidebar.
+- Popup placement with more than one display is fixed in code but has only been tested with a
+  single display.
 
 ## Third-party
 

@@ -1,7 +1,9 @@
 import AppKit
 import CryptoKit
 
-class LauncherGenerator {
+/// Runs from a detached task at launch, so it opts out of the module's
+/// default main-actor isolation. File work only, no UI.
+nonisolated class LauncherGenerator {
     static var launchersURL: URL {
         DockFoldersPath.baseURL.appendingPathComponent(".launchers")
     }

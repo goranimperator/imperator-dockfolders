@@ -17,7 +17,7 @@ struct FolderGlyph: View {
 
 /// Lucide `lucide-folder` path, scaled from its 24x24 viewBox to whatever rect
 /// it is handed.
-private struct FolderShape: Shape {
+private nonisolated struct FolderShape: Shape {
     func path(in rect: CGRect) -> Path {
         let s = min(rect.width, rect.height) / 24
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {

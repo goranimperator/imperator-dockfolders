@@ -1,13 +1,18 @@
 import AppKit
 
 /// Dark-mode check for icon generation. BrandBook 14.1 forces dark appearance
-/// app-wide, so this effectively always returns true while the app is running.
-/// Kept as a function so background icon-render tasks running before `NSApp`
-/// is fully configured still resolve to a sensible value.
-func effectiveIsDark() -> Bool {
-    guard NSApp != nil else { return true }
-    let appearance = NSApp.effectiveAppearance
-    return appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+/// app-wide, so this is true whenever the app is running.
+///
+/// Off the main thread it answers true without asking. "Refresh all folders"
+/// redraws icons from a detached task, and reading `NSApp.effectiveAppearance`
+/// there was a data race against the main thread, which Swift 6 rejects. The
+/// appearance it would have read is the forced dark one anyway.
+nonisolated func effectiveIsDark() -> Bool {
+    guard Thread.isMainThread else { return true }
+    return MainActor.assumeIsolated {
+        guard NSApp != nil else { return true }
+        return NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
 }
 
 @MainActor

@@ -15,7 +15,9 @@ class DockIconLocator {
 
     /// Request Accessibility permission if not yet granted.
     func requestAccessIfNeeded() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+        // The value of kAXTrustedCheckOptionPrompt. Swift 6 rejects reading that
+        // imported C global as shared mutable state, so the key is spelled out.
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)
     }
 
@@ -70,7 +72,10 @@ class DockIconLocator {
         var size = CGSize.zero
         guard AXValueGetValue(posValue as! AXValue, .cgPoint, &position),
               AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else { return nil }
-        let screenH = NSScreen.main?.frame.height ?? 0
+        // AX flips against the PRIMARY screen (the menu bar one), never
+        // NSScreen.main: that is the key window's screen, and with two displays
+        // of different heights it put every Dock tile off by the difference.
+        let screenH = NSScreen.screens.first?.frame.height ?? 0
         return NSRect(x: position.x, y: screenH - position.y - size.height,
                       width: size.width, height: size.height)
     }
@@ -139,8 +144,9 @@ class DockIconLocator {
               AXValueGetValue(sizeAX, .cgSize, &size)
         else { return nil }
 
-        // AX coordinates are top-left origin, convert to AppKit bottom-left
-        let screenH = NSScreen.main?.frame.height ?? 0
+        // AX coordinates are top-left origin, convert to AppKit bottom-left.
+        // Against the primary screen, as in axFrame(of:).
+        let screenH = NSScreen.screens.first?.frame.height ?? 0
         let centerX = position.x + size.width / 2
         let centerY = screenH - (position.y + size.height / 2)
 

@@ -1,7 +1,10 @@
 import Foundation
 import AppKit
+import Observation
 
-enum DockFoldersPath {
+/// File paths and JSON shapes. Read from detached tasks (icon and launcher
+/// generation), so it opts out of the module's default main-actor isolation.
+nonisolated enum DockFoldersPath {
     static let baseURL: URL = {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         return appSupport.appendingPathComponent("DockFolders")
@@ -26,13 +29,16 @@ enum DockFoldersPath {
     }
 }
 
+/// Observation rather than ObservableObject: a view now re-renders only when a
+/// property it actually read changes, not on every published change.
 @MainActor
-class FolderStore: ObservableObject {
+@Observable
+final class FolderStore {
     static var baseURL: URL { DockFoldersPath.baseURL }
 
-    @Published var folders: [DockFolder] = []
+    var folders: [DockFolder] = []
 
-    private let fm = FileManager.default
+    @ObservationIgnored private let fm = FileManager.default
 
     init() {
         ensureBaseDirectory()
@@ -251,15 +257,29 @@ class FolderStore: ObservableObject {
         }
     }
 
-    func reorderApps(in folder: DockFolder, to newOrder: [AppEntry]) {
+    /// `refreshDock: false` writes the order and leaves the Dock alone. The
+    /// folder editor passes it while arranging, because refreshing restarts the
+    /// whole Dock, synchronously, and doing that on every drop froze the window
+    /// and made the Dock flash once per moved icon. The editor calls
+    /// `refreshDockIcon(forFolderAt:)` once when arranging ends instead.
+    func reorderApps(in folder: DockFolder, to newOrder: [AppEntry], refreshDock: Bool = true) {
         saveOrder(newOrder, in: folder.url)
 
-        if folder.isInDock {
+        if refreshDock && folder.isInDock {
             IconGenerator.generateIcon(for: folder.url)
             DockController.shared.refreshDock()
         }
 
         reload()
+    }
+
+    /// Regenerates a folder's icon and refreshes the Dock, if the folder is in
+    /// it. Looked up by URL so a caller can still settle a folder the user has
+    /// navigated away from.
+    func refreshDockIcon(forFolderAt url: URL) {
+        guard let folder = folders.first(where: { $0.url == url }), folder.isInDock else { return }
+        IconGenerator.generateIcon(for: folder.url)
+        DockController.shared.refreshDock()
     }
 
     func createFolder(name: String) throws {
@@ -314,10 +334,11 @@ class FolderStore: ObservableObject {
         reload()
     }
 
-    func removeApp(from folder: DockFolder, app: AppEntry) throws {
+    /// `refreshDock: false` as for `reorderApps(in:to:refreshDock:)`.
+    func removeApp(from folder: DockFolder, app: AppEntry, refreshDock: Bool = true) throws {
         try? fm.removeItem(at: app.localURL)
 
-        if folder.isInDock {
+        if refreshDock && folder.isInDock {
             IconGenerator.generateIcon(for: folder.url)
             DockController.shared.refreshDock()
         }

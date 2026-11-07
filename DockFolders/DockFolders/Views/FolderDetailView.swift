@@ -745,10 +745,12 @@ struct AppGridCarousel: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: iconSize, height: iconSize)
-                .overlay(alignment: .topTrailing) {
+                // Top left, overlapping the icon's corner, where iOS and iPadOS
+                // put it.
+                .overlay(alignment: .topLeading) {
                     if isArranging && !isLifted {
                         DeleteBadge { remove(app) }
-                            .offset(x: 4, y: -4)
+                            .offset(x: -6, y: -6)
                             .transition(.scale(scale: 0.2).combined(with: .opacity))
                     }
                 }
@@ -1078,11 +1080,13 @@ struct DeleteBadge: View {
 
     var body: some View {
         Button(action: action) {
-            // White glyph on a brand-red disc: hierarchical foregroundStyle takes
-            // the mark first, the fill second.
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 21, weight: .bold))
-                .foregroundStyle(.white, AppColors.brand)
+            // The iOS / iPadOS remove badge: a dark minus on a light grey disc.
+            // Not the brand red: the badge marks an option, not an alarm, and a
+            // red mark on every icon made the arranging grid read as errors.
+            // Hierarchical foregroundStyle takes the mark first, the fill second.
+            Image(systemName: "minus.circle.fill")
+                .font(.system(size: 21, weight: .semibold))
+                .foregroundStyle(Color.black.opacity(0.8), Color(white: 0.78))
                 .scaleEffect(isHovered ? 1.2 : 1.0)
                 .animation(.easeOut(duration: 0.15), value: isHovered)
         }

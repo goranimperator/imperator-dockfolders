@@ -149,7 +149,7 @@ default.
   put; the underlying app is untouched.
 - **Arrange** apps the way you would on an iPhone: hold an app (or click **Arrange**) and the
   icons start to wiggle. Drag one and the others move out of its way; hold it at a side edge to
-  turn the page. The red badge removes an app. **Done**, Escape or a click on empty space stops
+  turn the page. The minus badge at an icon's top left removes it. **Done**, Escape or a click on empty space stops
   arranging, and the folder's Dock icon is redrawn once, then.
 - **Drag** folders in the sidebar to reorder them. The selected folder shows its delete button.
 - **Grid** controls set the columns (2, 3, 4 or 5) and the apps per page (4, 6, 8, 9, 12, 16 or 20;

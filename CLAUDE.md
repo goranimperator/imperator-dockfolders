@@ -95,7 +95,9 @@ Do not move the helper compile back to runtime:
 
 ### Dock integration
 
-`DockController.swift` writes launcher .app bundles into `com.apple.dock`'s `persistent-apps` (not `persistent-others`) so they appear among regular apps. Direct plist read/write via `CFPreferences` + `killall Dock` to apply. URL variants with spaces and `%20` encoding are normalized when matching existing entries.
+`DockController.swift` writes launcher .app bundles into `com.apple.dock`'s `persistent-apps` (not `persistent-others`) so they appear among regular apps.
+
+**A Dock tile is tied to a folder by the file it stands for, never by its title.** A folder named after an app in the same Dock ("Safari") has that app's title too; matching titles anchored the folder's popup over Safari and let a click on Safari open the folder. `LauncherGenerator.folderName(forDockURL:)` is the one mapping: a tile is a folder's if its URL is `.launchers/<name>.app` (or, for entries from the first release, the folder directory itself). `DockIconLocator` reads the tile's `AXURL` and `DockController` parses the stored `_CFURLString`, both through that function, string work only, since the click path calls it for every tile. `addToDock` writes a real file URL (`absoluteString`, so `#`, `?`, `%` are encoded) and XML-escapes it for the `defaults` plist; escaping only spaces broke names like "Dev #1", and a raw `&` made the plist invalid so nothing was added. Direct plist read/write via `CFPreferences` + `killall Dock` to apply. URL variants with spaces and `%20` encoding are normalized when matching existing entries.
 
 ### Popup panel
 

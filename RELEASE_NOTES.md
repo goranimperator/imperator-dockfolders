@@ -1,5 +1,7 @@
 Page the popup by clicking and dragging, page with a mouse wheel, and a pass against the updated Imperator BrandBook.
 
+- A folder named the same as an app in the Dock, such as "Safari", opened its popup over that app instead of over the folder, and a click on the app could open the folder. Folders are now tied to their Dock tiles by file, not by name.
+- Folders whose names contain `#`, `?`, `%` or `&` can be added to the Dock. Before, the Dock entry came out broken or was never written.
 - The popup pages by clicking and dragging, as well as by trackpad swipe and the page dots. The pages follow the pointer and give at the first and last page, and a quick flick turns the page. A click that does not move still opens the app; a swipe that starts on an icon never does.
 - A mouse wheel turns pages, in the popup and in the main window. Before, only a trackpad could.
 - An icon dropped in an empty slot at the end of a page row stays on that page. It used to land on the next one.

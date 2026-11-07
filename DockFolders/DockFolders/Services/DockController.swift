@@ -11,7 +11,16 @@ class DockController {
         return [withSpaces, encoded, withSpaces + "/", encoded + "/"]
     }
 
+    /// Whether a Dock entry's URL string is this folder's tile. Parsed and
+    /// matched by path through `LauncherGenerator.folderName(forDockURL:)`, the
+    /// same rule DockIconLocator uses. The raw string variants stay as a second
+    /// check for entries written before the URL was properly encoded: a name
+    /// with `#` in it was stored unescaped and does not parse back to its path.
     private func matchesFolder(_ urlString: String, folderURL: URL) -> Bool {
+        if let url = URL(string: urlString),
+           LauncherGenerator.folderName(forDockURL: url) == folderURL.lastPathComponent {
+            return true
+        }
         let launcherPath = LauncherGenerator.launcherURL(for: folderURL).path
         let folderPath = folderURL.path + "/"
         let allVariants = dockURLVariants(for: launcherPath) + dockURLVariants(for: folderPath)
@@ -43,11 +52,7 @@ class DockController {
     }
 
     func isFolderInDock(_ folderURL: URL) -> Bool {
-        let urls = dockURLSet()
-        let launcherPath = LauncherGenerator.launcherURL(for: folderURL).path
-        let folderPath = folderURL.path + "/"
-        let allVariants = dockURLVariants(for: launcherPath) + dockURLVariants(for: folderPath)
-        return allVariants.contains { urls.contains($0) }
+        dockURLSet().contains { matchesFolder($0, folderURL: folderURL) }
     }
 
     func addToDock(_ folderURL: URL) {
@@ -57,9 +62,16 @@ class DockController {
         LauncherGenerator.ensureLaunchersDirectory()
         LauncherGenerator.generateLauncher(for: folderURL)
 
-        let launcherPath = LauncherGenerator.launcherURL(for: folderURL).path
-        let escapedPath = launcherPath.replacingOccurrences(of: " ", with: "%20")
-        let urlString = "file://\(escapedPath)"
+        // A real file URL, so every reserved character is encoded. Escaping only
+        // spaces left `#`, `?` and `%` raw, and a name like "Dev #1" was stored
+        // as a URL whose path stops at "Dev ".
+        let urlString = URL(fileURLWithPath: LauncherGenerator.launcherURL(for: folderURL).path).absoluteString
+        // The plist below is XML: a folder named "Tools & Utils" made it invalid
+        // and `defaults` then silently added nothing.
+        let xmlURLString = urlString
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
 
         let plistXML = """
         <dict>
@@ -67,7 +79,7 @@ class DockController {
             <dict>
                 <key>file-data</key>
                 <dict>
-                    <key>_CFURLString</key><string>\(urlString)</string>
+                    <key>_CFURLString</key><string>\(xmlURLString)</string>
                     <key>_CFURLStringType</key><integer>15</integer>
                 </dict>
             </dict>

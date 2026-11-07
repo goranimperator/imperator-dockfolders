@@ -6,10 +6,17 @@ import ApplicationServices
 class DockIconLocator {
     static let shared = DockIconLocator()
 
-    /// Returns the screen-space center point of a dock icon matching the given launcher name.
-    /// Falls back to nil if Accessibility is unavailable or the icon isn't found.
+    /// Returns the screen-space center point of the Dock tile for the folder
+    /// with this name. Nil if Accessibility is unavailable or the folder is not
+    /// in the Dock; callers then fall back to the mouse position.
+    ///
+    /// Tiles are matched on the file they stand for (`AXURL`), never on their
+    /// title. A folder named after an app in the same Dock, say "Safari", has
+    /// the same title as that app's tile, and matching on the title anchored
+    /// the folder's popup over Safari and let a click on Safari open the folder.
+    /// See `LauncherGenerator.folderName(forDockURL:)`.
     func iconCenter(forLauncherNamed name: String) -> NSPoint? {
-        guard let element = findDockItem(named: name) else { return nil }
+        guard let element = findDockItem(forFolderNamed: name) else { return nil }
         return axCenterPoint(of: element)
     }
 
@@ -27,9 +34,11 @@ class DockIconLocator {
     private var dockFrame: NSRect?
     private var dockFrameStamp: Date = .distantPast
 
-    /// If `point` (AppKit bottom-left coordinates) is on a Dock tile whose title
-    /// matches `names`, return the title and the tile's center. One AX position
-    /// query when the point is inside the Dock region; pure math otherwise.
+    /// If `point` (AppKit bottom-left coordinates) is on the Dock tile of one of
+    /// the folders in `names`, return that folder's name and the tile's center.
+    /// One AX position query when the point is inside the Dock region; pure math
+    /// otherwise. Tiles are matched on the file they stand for, never their
+    /// title (see `iconCenter(forLauncherNamed:)`).
     func folderTile(at point: NSPoint, matching names: Set<String>) -> (name: String, center: NSPoint)? {
         guard AXIsProcessTrusted(), !names.isEmpty else { return nil }
 
@@ -43,7 +52,7 @@ class DockIconLocator {
 
         // Enumerate Dock tiles and match on frame. A systemwide
         // AXUIElementCopyElementAtPosition hit-test does not resolve Dock tiles
-        // reliably, so this reuses the same enumeration findDockItem uses.
+        // reliably, so this reuses the same enumeration findDockItem(forFolderNamed:) uses.
         guard let dockPID = NSRunningApplication.runningApplications(
             withBundleIdentifier: "com.apple.dock"
         ).first?.processIdentifier else { return nil }
@@ -52,10 +61,11 @@ class DockIconLocator {
               let items = axChildren(of: dockList) else { return nil }
 
         for item in items {
-            guard let title = axTitle(of: item), names.contains(title),
+            guard let url = axURL(of: item),
+                  let name = LauncherGenerator.folderName(forDockURL: url), names.contains(name),
                   let itemFrame = axFrame(of: item) else { continue }
             if itemFrame.insetBy(dx: -2, dy: -2).contains(point) {
-                return (title, NSPoint(x: itemFrame.midX, y: itemFrame.midY))
+                return (name, NSPoint(x: itemFrame.midX, y: itemFrame.midY))
             }
         }
         return nil
@@ -104,7 +114,7 @@ class DockIconLocator {
 
     // MARK: - Private
 
-    private func findDockItem(named name: String) -> AXUIElement? {
+    private func findDockItem(forFolderNamed name: String) -> AXUIElement? {
         guard AXIsProcessTrusted() else { return nil }
 
         guard let dockPID = NSRunningApplication.runningApplications(
@@ -116,14 +126,9 @@ class DockIconLocator {
         guard let dockList = axChildren(of: dockApp)?.first,
               let items = axChildren(of: dockList) else { return nil }
 
-        for item in items {
-            guard let title = axTitle(of: item) else { continue }
-            if title == name {
-                return item
-            }
+        return items.first { item in
+            axURL(of: item).flatMap(LauncherGenerator.folderName(forDockURL:)) == name
         }
-
-        return nil
     }
 
     private func axCenterPoint(of element: AXUIElement) -> NSPoint? {
@@ -160,10 +165,12 @@ class DockIconLocator {
         return children
     }
 
-    private func axTitle(of element: AXUIElement) -> String? {
+    /// The file the tile stands for: an app, a folder, or one of our launcher
+    /// bundles. Nil for separators and the Trash.
+    private func axURL(of element: AXUIElement) -> URL? {
         var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &value)
-        guard result == .success, let title = value as? String else { return nil }
-        return title
+        let result = AXUIElementCopyAttributeValue(element, kAXURLAttribute as CFString, &value)
+        guard result == .success, let url = value as? URL else { return nil }
+        return url
     }
 }

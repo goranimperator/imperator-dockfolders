@@ -13,6 +13,31 @@ nonisolated class LauncherGenerator {
         return launchersURL.appendingPathComponent("\(name).app")
     }
 
+    /// The folder a Dock tile belongs to, from the file URL the tile stands
+    /// for: its launcher bundle in `.launchers`, or the folder directory itself
+    /// (the first release put that in the Dock). Nil for anything else.
+    ///
+    /// This is how a tile is tied to a folder, never by its title: a folder named
+    /// after an app in the same Dock has that app's title too. DockIconLocator
+    /// and DockController both go through here so they cannot disagree. String
+    /// work only, because the click path calls it for every Dock tile.
+    static func folderName(forDockURL url: URL) -> String? {
+        guard url.isFileURL else { return nil }
+        let path = url.standardizedFileURL.path as NSString
+        let parent = path.deletingLastPathComponent
+        let last = path.lastPathComponent
+        if parent == launchersPath, last.hasSuffix(".app"), last.count > 4 {
+            return String(last.dropLast(4))
+        }
+        if parent == basePath, !last.hasPrefix(".") {
+            return last
+        }
+        return nil
+    }
+
+    private static let launchersPath = launchersURL.standardizedFileURL.path
+    private static let basePath = DockFoldersPath.baseURL.standardizedFileURL.path
+
     /// Plist key stamping which helper binary a launcher bundle was built with.
     /// updateAllLaunchersIfNeeded() compares it against the running app's helper
     /// to decide whether a bundle needs regeneration.

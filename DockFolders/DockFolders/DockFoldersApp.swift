@@ -20,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Task { @MainActor in
             setupDarwinListener()
             consumePendingHandoff()
+            UpdateChecker.shared.start()
             // Warm SwiftUI layout, panel and material once so the first real
             // popup skips its one-time setup cost. Largest folder = worst-case
             // layout warmed.

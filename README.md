@@ -60,8 +60,9 @@ xattr -dr com.apple.quarantine "/Applications/Imperator DockFolders.app"
 ## Permissions
 
 DockFolders asks for **one** system permission up front, and degrades gracefully without it.
-macOS may ask a second question later, the first time the app reads an external drive. Here is
-every permission-relevant thing the app does, and why.
+macOS may ask two more questions later: the first time the app reads an external drive, and the
+first time there is an update to tell you about. Here is every permission-relevant thing the app
+does, and why.
 
 ### Accessibility: asked for, optional
 
@@ -97,6 +98,12 @@ listed, and **Choose Apps** in the picker still adds an app from it, because a f
 the system file dialog is yours to open. You can also turn the drive scan off entirely in
 **Settings → External Drives**, and then the question never comes up.
 
+### Notifications: asked when there is an update
+
+Once a day the app checks GitHub for a newer release (see **Updates** under Use). The first time
+it finds one, it asks to show notifications, so it can tell you once per new version. Deny it and
+nothing breaks: the update still shows as a row in the sidebar and in **Settings → Updates**.
+
 ### Not asked for, and not needed
 
 To be explicit, since these are the ones people worry about:
@@ -108,7 +115,7 @@ To be explicit, since these are the ones people worry about:
 | **Input Monitoring** | No | No keyboard taps of any kind. The mouse-click tap above is listen-only and covered by the Accessibility grant; macOS reserves Input Monitoring for keyboard/HID observation, which this app never does. |
 | **Automation / Apple Events** | No | No AppleScript and no cross-application scripting. Restarting the Dock is `killall Dock`, a plain signal to your own process, not an Apple Event. |
 | **Screen Recording** | No | Nothing is captured. Folder icons are drawn from each app's own icon via `NSWorkspace`. |
-| **Network** | No | The app makes no network requests. No telemetry, no update check, no analytics. |
+| **Network** | One request a day | The update check: one `GET` a day to `api.github.com/repos/goranimperator/imperator-dockfolders/releases/latest`. It sends nothing but the app's name and version as the User-Agent GitHub requires. No telemetry, no analytics, nothing about you or your folders. Turn it off in **Settings → Updates**. |
 | **App Sandbox** | Not enabled | Writing to the Dock's preference domain and creating launcher bundles outside a container are both impossible inside the sandbox. This is why the app cannot ship on the Mac App Store. |
 
 ### Where it writes
@@ -163,6 +170,12 @@ default.
   clicking and dragging, in the popup and in the main window alike.
 - **Add to Dock** builds a launcher bundle with the generated icon and drops it into the Dock.
 - **Escape** or a click anywhere outside closes the popup.
+- **Updates**: once a day the app checks GitHub for a newer release. When there is one, a row in
+  the sidebar says so with a **Download** button, and you get one notification per new version.
+  Both open the release page; installing works as described under Install, including the
+  Gatekeeper step: a downloaded update is blocked on first launch just like the first install, so
+  choose **Done** and run the `xattr` command again. **Settings → Updates** has the switch and a
+  **Check Now** button.
 
 Apps are added as **symlinks**, not copies and not Finder aliases. Nothing is duplicated on
 disk and nothing is moved.
@@ -222,6 +235,7 @@ DockFolders/DockFolders/
     LauncherGenerator.swift generates the launcher .app bundles
     IconGenerator.swift     renders the 1024x1024 folder icons
     AppDiscovery.swift      scans the application directories and external drives
+    UpdateChecker.swift     daily check for a newer release on GitHub
     DockIconLocator.swift   Accessibility lookup of the Dock tile position
     AppColors.swift         brand tokens
   Views/

@@ -1,16 +1,9 @@
-Page the popup by clicking and dragging, page with a mouse wheel, and a pass against the updated Imperator BrandBook.
+The app now tells you when a newer version is out.
 
-- A folder named the same as an app in the Dock, such as "Safari", opened its popup over that app instead of over the folder, and a click on the app could open the folder. Folders are now tied to their Dock tiles by file, not by name.
-- Folders whose names contain `#`, `?`, `%` or `&` can be added to the Dock. Before, the Dock entry came out broken or was never written.
-- While arranging, the badge that removes an app is the iOS and iPadOS one: a dark minus on a grey disc, at the icon's top left. It was a white cross on a red disc at the top right.
-- The popup pages by clicking and dragging, as well as by trackpad swipe and the page dots. The pages follow the pointer and give at the first and last page, and a quick flick turns the page. A click that does not move still opens the app; a swipe that starts on an icon never does.
-- A mouse wheel turns pages, in the popup and in the main window. Before, only a trackpad could.
-- An icon dropped in an empty slot at the end of a page row stays on that page. It used to land on the next one.
-- Folder rows in the sidebar no longer react to hover. The delete button shows on the selected folder, and long folder names stay on one line.
-- The popup has the window corner of macOS 27: 18pt with a continuous curve, and a 12pt arrow.
-- Apps in the grid can be moved with Move Left and Move Right from the keyboard and VoiceOver.
-- Fixes found in review: a drag started on an icon in the popup followed at half speed and snapped back; a swipe released outside the popup closed it; a swipe released over a Dock tile reopened the popup; a click beside the grid could open an app from the next page; the pointer could stay a hand after opening an app.
-- The README now shows the app, and explains the removable-volume question macOS may ask the first time the app reads an external drive.
+- Once a day the app asks GitHub for the latest release. When there is a newer one, a row in the sidebar says so with a Download button, and you get one notification per new version. Both open the release page; installing works as before.
+- The check is the app's only network traffic. It sends nothing but the app's name and version. Turn it off, or check right away, in Settings → Updates.
+- Updating is still done by hand. A downloaded update is blocked by Gatekeeper on first launch like any download of this app: choose Done and run the `xattr` command below again.
+- macOS asks once whether the app may show notifications, the first time there is an update to report. Saying no is fine: the sidebar row still appears.
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on
 macOS 27 only: older versions are expected to work but have not been verified.
@@ -24,5 +17,5 @@ Done. Then clear the quarantine flag once with
 `/Applications`, or open System Settings → Privacy & Security and click Open Anyway.
 
 Grant Accessibility when prompted: it anchors the popup to the Dock icon and enables the fast
-click path. It is optional; everything works without it. No other permissions are requested up
-front, and the app makes no network requests.
+click path. It is optional; everything works without it. The only network request is the daily
+update check, which sends nothing but the app's name and version.

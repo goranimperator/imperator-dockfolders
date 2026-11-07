@@ -20,6 +20,7 @@
 		045192303617911728008093 /* DockIconLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 680012750185738315463007 /* DockIconLocator.swift */; };
 		A10022 /* IconGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10022; };
 		A10023 /* AppDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10023; };
+		A10050 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10050; };
 		A10030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10030; };
 		A10025 /* LauncherGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10025; };
 		A10009 /* FolderPopupPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10009; };
@@ -46,6 +47,7 @@
 		680012750185738315463007 /* DockIconLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockIconLocator.swift; sourceTree = "<group>"; };
 		B10022 /* IconGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconGenerator.swift; sourceTree = "<group>"; };
 		B10023 /* AppDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiscovery.swift; sourceTree = "<group>"; };
+		B10050 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		B10025 /* LauncherGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherGenerator.swift; sourceTree = "<group>"; };
 		B10009 /* FolderPopupPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPopupPanel.swift; sourceTree = "<group>"; };
 		B10040 /* PillIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillIconButton.swift; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 				680012750185738315463007 /* DockIconLocator.swift */,
 				B10022 /* IconGenerator.swift */,
 				B10023 /* AppDiscovery.swift */,
+				B10050 /* UpdateChecker.swift */,
 				B10025 /* LauncherGenerator.swift */,
 			);
 			path = Services;
@@ -267,6 +270,7 @@
 				045192303617911728008093 /* DockIconLocator.swift in Sources */,
 				A10022 /* IconGenerator.swift in Sources */,
 				A10023 /* AppDiscovery.swift in Sources */,
+				A10050 /* UpdateChecker.swift in Sources */,
 				A10025 /* LauncherGenerator.swift in Sources */,
 				A10009 /* FolderPopupPanel.swift in Sources */,
 				A10040 /* PillIconButton.swift in Sources */,

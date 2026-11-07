@@ -23,6 +23,11 @@ struct ContentView: View {
 
                     Divider()
 
+                    if let update = UpdateChecker.shared.available {
+                        updateRow(update)
+                        Divider()
+                    }
+
                     HStack {
                         Button(action: { showNewFolderSheet = true }) {
                             Label("Add Folder", systemImage: "plus.circle.fill")
@@ -83,6 +88,29 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             store.reload()
         }
+    }
+
+    /// Shown only while a newer release is out. The Download button opens the
+    /// release page; installing stays manual (README, Install).
+    private func updateRow(_ update: UpdateChecker.Release) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(AppColors.brand)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Version \(update.version) is out")
+                    .font(.system(size: 12, weight: .medium))
+                Text("You have \(UpdateChecker.currentVersion)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Download") { UpdateChecker.open(update.page) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
     }
 
     /// The three folder-wide actions, folded away under Add Folder so the

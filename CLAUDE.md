@@ -205,6 +205,22 @@ stays on the main actor. `effectiveIsDark()` answers true off the main thread in
 `FolderStore` is `@Observable`; views read it with `@Environment(FolderStore.self)`. No
 `ObservableObject`, `@Published` or `@EnvironmentObject` remain.
 
+### Update check
+
+`UpdateChecker` (Services) is the app's only network traffic: once a day, a `GET` to GitHub's
+`releases/latest` for this repo, with the app's name and version as the User-Agent and nothing
+else. An hourly timer checks whether a day has passed since the last *successful* check, so a
+failure retries within the hour and a Mac that slept through the mark checks soon after waking.
+Tags are compared numerically per component (`1.0.10` is newer than `1.0.9`). A newer version
+sets `status = .available`, which shows a row in the sidebar and in Settings, and posts one
+notification per version (`notifiedUpdateVersion`). The notification permission is requested
+only then, never at first launch. Links open only for `https://github.com`. No self-install: the
+app is not notarized, so updating stays the manual README flow. The README's Network row and
+Notifications section describe all of this; keep them true if the check changes.
+
+Overwriting a release (delete + recreate the tag) briefly makes `releases/latest` point at the
+previous one, or 404. The checker treats that as a failed check and retries.
+
 ## Inline editing pattern (double-click to rename)
 
 Folder name in the sidebar, folder name in the detail header, and per-app label in the grid all use the same flow:

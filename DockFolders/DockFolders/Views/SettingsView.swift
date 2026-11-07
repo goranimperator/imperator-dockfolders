@@ -4,6 +4,7 @@ import ServiceManagement
 struct SettingsView: View {
     @AppStorage("showMainWindow") private var showMainWindow: Bool = true
     @AppStorage(VolumeScanSettings.scanEnabledKey) private var scanExternalDrives: Bool = true
+    @AppStorage(UpdateChecker.enabledKey) private var checkForUpdates: Bool = true
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
     @State private var externalVolumeNames: [String] = []
     @State private var excludedVolumeNames = VolumeScanSettings.excludedVolumeNames
@@ -58,6 +59,33 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Toggle("Check for updates", isOn: $checkForUpdates)
+                    .toggleStyle(.switch)
+                    .tint(AppColors.brand)
+                    .onChange(of: checkForUpdates) { _, on in
+                        if on { UpdateChecker.shared.checkIfDue() }
+                    }
+
+                HStack {
+                    Text(updateStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if let update = UpdateChecker.shared.available {
+                        Button("Download") { UpdateChecker.open(update.page) }
+                    }
+                    Button("Check Now") { Task { await UpdateChecker.shared.check() } }
+                        .disabled(UpdateChecker.shared.status == .checking)
+                }
+            } header: {
+                Text("Updates")
+            } footer: {
+                Text("Once a day the app asks GitHub for the latest release and compares it with this version. Nothing is sent but the app's name and version. A newer version shows in the sidebar and as one notification; installing it is up to you.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .frame(width: 400)
@@ -69,6 +97,17 @@ struct SettingsView: View {
         }
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didUnmountNotification)) { _ in
             reloadVolumes()
+        }
+    }
+
+    private var updateStatus: String {
+        let current = UpdateChecker.currentVersion
+        switch UpdateChecker.shared.status {
+        case .idle: return "Version \(current)"
+        case .checking: return "Checking…"
+        case .upToDate: return "Up to date, version \(current)"
+        case .failed: return "Could not reach GitHub"
+        case .available(let release): return "Version \(release.version) is available, you have \(current)"
         }
     }
 

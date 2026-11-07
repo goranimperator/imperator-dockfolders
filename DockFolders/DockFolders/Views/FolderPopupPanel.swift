@@ -2,19 +2,11 @@ import SwiftUI
 import AppKit
 
 nonisolated struct PopupShape: Shape {
-    /// Matches the panel radius every Imperator menu bar app uses
-    /// (`MenuBarPanel.cornerRadius`), so the Dock popup and the menu bar panels
-    /// read as the same surface.
-    ///
-    /// 18.25 rather than 17.5 because `NSVisualEffectView` blends its edge, so
-    /// the drawn corner measures about 0.75 pt tighter than the radius asked
-    /// for. Measured on the menu bar panels: at 17.5 it drew 16.75, at 18.25 it
-    /// draws 17.50, which is what macOS 27 draws on its own panels. This popup
-    /// sits on the same `.hudWindow` effect view, so it needs the same
-    /// compensation.
-    ///
-    /// The arcs below are circular, matching `cornerCurve = .circular` there.
-    static let brandCornerRadius: CGFloat = 18.25
+    /// BrandBook 6.3 and 13: a floating panel the app draws itself takes the
+    /// window radius, 18pt with a continuous curve, so it matches the system
+    /// windows around it. The menu bar panels use 18.25 with a circular curve;
+    /// that value is for `MenuBarPanel` only.
+    static let brandCornerRadius: CGFloat = 18
 
     let cornerRadius: CGFloat
     let arrowX: CGFloat
@@ -23,29 +15,26 @@ nonisolated struct PopupShape: Shape {
         // Match macOS dock tooltip arrow style
         let arrowH: CGFloat = 5
         let arrowW: CGFloat = 12
-        let r = cornerRadius
-        let bodyH = rect.height - arrowH
-        let tipX = min(max(arrowX, r + arrowW / 2 + 2), rect.width - r - arrowW / 2 - 2)
+        let body = CGRect(x: 0, y: 0, width: rect.width, height: rect.height - arrowH)
+        // A continuous corner bends in further than its radius, so the arrow
+        // is kept that much further from the ends of the bottom edge.
+        let inset = cornerRadius * 1.3 + arrowW / 2
+        let tipX = min(max(arrowX, inset), rect.width - inset)
 
-        var p = Path()
-        p.move(to: CGPoint(x: r, y: 0))
-        p.addLine(to: CGPoint(x: rect.width - r, y: 0))
-        p.addArc(tangent1End: CGPoint(x: rect.width, y: 0),
-                 tangent2End: CGPoint(x: rect.width, y: r), radius: r)
-        p.addLine(to: CGPoint(x: rect.width, y: bodyH - r))
-        p.addArc(tangent1End: CGPoint(x: rect.width, y: bodyH),
-                 tangent2End: CGPoint(x: rect.width - r, y: bodyH), radius: r)
-        p.addLine(to: CGPoint(x: tipX + arrowW / 2, y: bodyH))
-        p.addLine(to: CGPoint(x: tipX, y: rect.height))
-        p.addLine(to: CGPoint(x: tipX - arrowW / 2, y: bodyH))
-        p.addLine(to: CGPoint(x: r, y: bodyH))
-        p.addArc(tangent1End: CGPoint(x: 0, y: bodyH),
-                 tangent2End: CGPoint(x: 0, y: bodyH - r), radius: r)
-        p.addLine(to: CGPoint(x: 0, y: r))
-        p.addArc(tangent1End: CGPoint(x: 0, y: 0),
-                 tangent2End: CGPoint(x: r, y: 0), radius: r)
-        p.closeSubpath()
-        return p
+        // Starts a point inside the body so the union leaves no seam, and is
+        // widened by the same slope there, so the arrow still measures arrowW
+        // where it leaves the body.
+        let overlap: CGFloat = 1
+        let halfBase = arrowW / 2 * (arrowH + overlap) / arrowH
+        var arrow = Path()
+        arrow.move(to: CGPoint(x: tipX - halfBase, y: body.maxY - overlap))
+        arrow.addLine(to: CGPoint(x: tipX, y: rect.height))
+        arrow.addLine(to: CGPoint(x: tipX + halfBase, y: body.maxY - overlap))
+        arrow.closeSubpath()
+
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .path(in: body)
+            .union(arrow)
     }
 }
 
@@ -79,6 +68,10 @@ class FolderPopupController {
     /// clicked. Never `NSScreen.main`, which is the screen with the key window
     /// and has nothing to do with where the Dock is.
     private var currentScreen: NSScreen?
+    /// Set when a click-and-drag swipe starts in the popup. A swipe can end with
+    /// the pointer past the panel's side; the popup then stays open until the
+    /// pointer has been back inside, instead of closing mid page turn.
+    private var swipeKeepsOpen = false
 
     private static func screen(containing point: NSPoint?) -> NSScreen? {
         guard let point else { return nil }
@@ -217,7 +210,8 @@ class FolderPopupController {
             folder: folder,
             onDismiss: { self.dismiss() },
             arrowX: arrowRelativeX,
-            fixedHeight: panelHeight
+            fixedHeight: panelHeight,
+            onSwipeStart: { self.swipeKeepsOpen = true }
         )
         panel.contentView = hostingView
 
@@ -243,41 +237,13 @@ class FolderPopupController {
         panel.orderFrontRegardless()
         panel.makeKey()
 
-        var scrollAccumX: CGFloat = 0
-        var scrollAccumY: CGFloat = 0
-        var gestureTriggered = false
+        // One page per gesture, from a trackpad or a plain mouse wheel.
+        var swipe = PageSwipeAccumulator()
         panel.onScrollEvent = { event in
-            if event.phase == .began {
-                scrollAccumX = 0
-                scrollAccumY = 0
-                gestureTriggered = false
-            }
-
-            if event.phase == .cancelled || event.phase == .ended {
-                scrollAccumX = 0
-                scrollAccumY = 0
-                gestureTriggered = false
-                return
-            }
-
-            if event.momentumPhase != [] {
-                return
-            }
-
-            guard !gestureTriggered else { return }
-
-            scrollAccumX += event.scrollingDeltaX
-            scrollAccumY += event.scrollingDeltaY
-
-            // Only horizontal swipe triggers page change
-            guard abs(scrollAccumX) > abs(scrollAccumY) else { return }
-            if abs(scrollAccumX) > 8 {
-                gestureTriggered = true
-                if scrollAccumX > 0 {
-                    NotificationCenter.default.post(name: .popupPrevPage, object: nil)
-                } else {
-                    NotificationCenter.default.post(name: .popupNextPage, object: nil)
-                }
+            switch swipe.direction(for: event) {
+            case -1: NotificationCenter.default.post(name: .popupPrevPage, object: nil)
+            case 1: NotificationCenter.default.post(name: .popupNextPage, object: nil)
+            default: break
             }
         }
 
@@ -325,12 +291,19 @@ class FolderPopupController {
 
     private func checkMouseDismiss() {
         guard let panel = panel else { return }
+        // A click-and-drag page swipe can carry the pointer past the panel's
+        // side. Wait for the button to come up before deciding.
+        if NSEvent.pressedMouseButtons & 1 != 0 { return }
         let mouse = NSEvent.mouseLocation
         let panelFrame = panel.frame
 
         // Keep open if mouse is inside the popup panel (with small margin)
         let expandedPanel = panelFrame.insetBy(dx: -8, dy: -8)
-        if expandedPanel.contains(mouse) { return }
+        if expandedPanel.contains(mouse) {
+            swipeKeepsOpen = false
+            return
+        }
+        if swipeKeepsOpen { return }
 
         // Keep open if mouse is in the dock area (below the panel)
         if mouse.y < panelFrame.minY {
@@ -349,10 +322,15 @@ class FolderPopupController {
         lastDismissTime = Date()
 
         p.orderOut(nil)
+        // Tearing the content down lets every cell's onDisappear run, which
+        // pops a pointing-hand cursor pushed by a cell the pointer was still on.
+        // show() builds a fresh hosting view each time anyway.
+        p.contentView = nil
 
         cachedPanel = p
         panel = nil
         currentFolderName = nil
+        swipeKeepsOpen = false
         removeMonitors()
     }
 
@@ -384,6 +362,20 @@ struct FolderPopupView: View {
     let onDismiss: () -> Void
     let arrowX: CGFloat
     var fixedHeight: CGFloat = 0
+    var onSwipeStart: () -> Void = {}
+    /// Read once per popup. As a computed property it was decoded from disk
+    /// for every cell on every render, and a drag renders once per event.
+    private let labels: [String: String]
+
+    init(folder: DockFolder, onDismiss: @escaping () -> Void, arrowX: CGFloat,
+         fixedHeight: CGFloat = 0, onSwipeStart: @escaping () -> Void = {}) {
+        self.folder = folder
+        self.onDismiss = onDismiss
+        self.arrowX = arrowX
+        self.fixedHeight = fixedHeight
+        self.onSwipeStart = onSwipeStart
+        self.labels = DockFoldersPath.loadLabels(in: folder.url)
+    }
 
     @AppStorage("cutAppNames") private var cutAppNames: Bool = false
     @State private var currentPage = 0
@@ -394,10 +386,18 @@ struct FolderPopupView: View {
     /// 0.25s page animation for the same cell's position -- which slid a label
     /// away from its own icon.
     @State private var isPaging = false
+    /// Horizontal follow while a click-and-drag swipe is in progress.
+    @State private var pageDragOffset: CGFloat = 0
+    @State private var isSwiping = false
+    /// Bumped by every page turn, so only the latest turn's timer clears
+    /// isPaging. A plain timer from an earlier turn cleared it mid-way through
+    /// a later one.
+    @State private var pagingGeneration = 0
 
-    private var labels: [String: String] {
-        DockFoldersPath.loadLabels(in: folder.url)
-    }
+    private static let space = "popupPages"
+    /// How far a press travels before it stops being a click.
+    private static let swipeSlop: CGFloat = 6
+    private static let pageTurn = Animation.interactiveSpring(response: 0.35, dampingFraction: 0.86)
 
     private var pages: [[AppEntry]] {
         guard !folder.apps.isEmpty else { return [] }
@@ -455,15 +455,30 @@ struct FolderPopupView: View {
                 //    pages.count * pageWidth wide and a narrower .frame CENTERS
                 //    its content by default, which showed half of page 1 next to
                 //    half of page 2 at rest.
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(0..<pages.count, id: \.self) { index in
-                        gridPage(pages[index])
-                            .frame(width: pageWidth, alignment: .top)
+                ZStack(alignment: .topLeading) {
+                    // Empty space swipes too, not only the icons.
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(swipeGesture())
+
+                    HStack(alignment: .top, spacing: 0) {
+                        ForEach(0..<pages.count, id: \.self) { index in
+                            gridPage(pages[index])
+                                .frame(width: pageWidth, alignment: .top)
+                        }
                     }
+                    .offset(x: -CGFloat(safePage) * pageWidth + pageDragOffset)
                 }
-                .offset(x: -CGFloat(safePage) * pageWidth)
+                // Swipe translations are measured here, in a space that does
+                // not move. Measured in a cell's own space they came back less
+                // the offset the swipe itself had applied, so a drag started on
+                // an icon followed at half speed and snapped back.
+                .coordinateSpace(name: Self.space)
                 .frame(width: pageWidth, alignment: .leading)
                 .clipped()
+                // .clipped() clips drawing, not hit testing: without this the
+                // neighbouring page's cells under the side padding launched.
+                .contentShape(Rectangle())
 
                 if pages.count > 1 {
                     Spacer().frame(height: 20)
@@ -479,6 +494,8 @@ struct FolderPopupView: View {
                         Circle()
                             .fill(index == safePage ? Color.white.opacity(0.9) : Color.white.opacity(0.25))
                             .frame(width: 7, height: 7)
+                            .contentShape(Rectangle())
+                            .cursor(.pointingHand)
                             .onTapGesture { goToPage(index) }
                     }
                 }
@@ -498,18 +515,51 @@ struct FolderPopupView: View {
         }
     }
 
+    /// Click and drag sideways, the way the pages move under a finger on a
+    /// phone. Ported from Imperator MenuBarFolders.
+    private func swipeGesture() -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
+            .onChanged { value in followSwipe(value) }
+            .onEnded { value in
+                if isSwiping { endSwipe(value) }
+            }
+    }
+
+    private func followSwipe(_ value: DragGesture.Value) {
+        if !isSwiping && abs(value.translation.width) > Self.swipeSlop {
+            isSwiping = true
+            hoveredApp = nil
+            onSwipeStart()
+        }
+        guard isSwiping else { return }
+        pageDragOffset = PageSwipe.follow(value.translation.width, page: safePage, pageCount: pages.count)
+    }
+
+    private func endSwipe(_ value: DragGesture.Value) {
+        isSwiping = false
+        turnPage(to: PageSwipe.target(from: safePage, pageCount: pages.count, release: value, width: pageWidth))
+    }
+
     private func goToPage(_ index: Int) {
         // Drop hover state: the pointer can sit still while the cell under it
         // slides away, so onHover never fires and the highlight would stay stuck
         // on an app that is no longer on screen.
         hoveredApp = nil
+        turnPage(to: index)
+    }
+
+    /// Every page turn, from a swipe, the wheel or a dot, uses the one spring
+    /// and holds hover off until that turn, and only that turn, has settled.
+    private func turnPage(to index: Int) {
         isPaging = true
-        withAnimation(.easeInOut(duration: 0.25)) {
+        pagingGeneration += 1
+        let generation = pagingGeneration
+        withAnimation(Self.pageTurn) {
             currentPage = min(max(index, 0), max(pages.count - 1, 0))
+            pageDragOffset = 0
         }
-        // Matches the animation duration above; a later swipe just re-arms it.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
-            isPaging = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            if pagingGeneration == generation { isPaging = false }
         }
     }
 
@@ -571,13 +621,27 @@ struct FolderPopupView: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .onHover { hovering in
-            guard !isPaging else { return }
+            guard !isPaging, !isSwiping else { return }
             hoveredApp = hovering ? app.id : nil
         }
-        .onTapGesture {
-            NSWorkspace.shared.open(app.url)
-            onDismiss()
-        }
+        .cursor(.pointingHand)
+        // Not a tap gesture: the same press decides whether it was a click or
+        // a swipe. A press that never travels launches the app; one that
+        // travels turns the page, and releasing it never launches the app it
+        // started on.
+        .gesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
+                .onChanged { value in followSwipe(value) }
+                .onEnded { value in
+                    if isSwiping {
+                        endSwipe(value)
+                    } else if abs(value.translation.width) <= Self.swipeSlop,
+                              abs(value.translation.height) <= Self.swipeSlop {
+                        NSWorkspace.shared.open(app.url)
+                        onDismiss()
+                    }
+                }
+        )
     }
 }
 

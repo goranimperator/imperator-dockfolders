@@ -76,6 +76,9 @@ struct AppPickerView: View {
             if isScanning {
                 VStack(spacing: 8) {
                     ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.7)
+                        .tint(.white)
                     Text("Looking for apps")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -143,7 +146,7 @@ struct AppPickerView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .contentShape(Rectangle())
-        .cursor(alreadyAdded ? .operationNotAllowed : .arrow)
+        .cursor(alreadyAdded ? .operationNotAllowed : .pointingHand)
         .onTapGesture {
             guard !alreadyAdded else { return }
             if isSelected {

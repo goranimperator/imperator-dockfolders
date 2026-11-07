@@ -14,6 +14,14 @@ macOS lets you drag a folder to the right side of the Dock and get a stack. Dock
 your folders on the **left** side among the real apps, gives each one a generated icon showing
 what is inside, and opens a keyboard-dismissable popup anchored to the Dock icon.
 
+<p align="center">
+  <img src="docs/screenshot-popup.jpg" width="358" alt="A DockFolders popup open above its Dock tile, showing a three by three grid of apps with page dots">
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-main-window.jpg" width="720" alt="The main window: folders in the sidebar with the selected one in brand red, and the selected folder's apps in a paged grid">
+</p>
+
 ## Requirements
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on macOS 27
@@ -51,7 +59,8 @@ xattr -dr com.apple.quarantine "/Applications/Imperator DockFolders.app"
 
 ## Permissions
 
-DockFolders asks for **one** system permission, and it degrades gracefully without it. Here is
+DockFolders asks for **one** system permission up front, and degrades gracefully without it.
+macOS may ask a second question later, the first time the app reads an external drive. Here is
 every permission-relevant thing the app does, and why.
 
 ### Accessibility: asked for, optional
@@ -79,6 +88,15 @@ macOS remembers this grant against the app's code signature. DockFolders ships s
 stable self-signed certificate specifically so the grant survives updates; reinstalling a newer
 build does not make you re-tick the box.
 
+### Removable volumes: asked by macOS, only if you have an external drive
+
+The app picker also lists apps on mounted external drives (see **Use**). macOS asks before any
+app reads a removable drive, so the first scan of one can bring up a prompt naming DockFolders.
+If you allow it, apps on the drive show up in the picker. If you deny it, the drive is simply not
+listed, and **Choose Apps** in the picker still adds an app from it, because a file you pick in
+the system file dialog is yours to open. You can also turn the drive scan off entirely in
+**Settings → External Drives**, and then the question never comes up.
+
 ### Not asked for, and not needed
 
 To be explicit, since these are the ones people worry about:
@@ -86,7 +104,7 @@ To be explicit, since these are the ones people worry about:
 | Permission | Needed? | Why not |
 |---|---|---|
 | **Full Disk Access** | No | The Dock configuration is read and written through `CFPreferences` and `/usr/bin/defaults`, which are the supported APIs for the `com.apple.dock` preference domain. The app never reads `~/Library/Preferences/com.apple.dock.plist` directly, which is what would require FDA. |
-| **Files & Folders** (Desktop, Documents, Downloads) | No | The app only ever scans `/Applications`, `/System/Applications`, `~/Applications`, and `/Applications/Xcode.app/Contents/Applications`. None of those are TCC-protected, so no prompt appears and none of your documents are touched. |
+| **Files & Folders** (Desktop, Documents, Downloads) | No | The app scans `/Applications`, `/System/Applications`, `~/Applications`, `/Applications/Xcode.app/Contents/Applications`, and mounted external drives (see Removable volumes above). Never Desktop, Documents or Downloads, so no prompt for those appears and none of your documents are touched. An app you pick yourself with **Choose Apps** is read through the system file dialog. |
 | **Input Monitoring** | No | No keyboard taps of any kind. The mouse-click tap above is listen-only and covered by the Accessibility grant; macOS reserves Input Monitoring for keyboard/HID observation, which this app never does. |
 | **Automation / Apple Events** | No | No AppleScript and no cross-application scripting. Restarting the Dock is `killall Dock`, a plain signal to your own process, not an Apple Event. |
 | **Screen Recording** | No | Nothing is captured. Folder icons are drawn from each app's own icon via `NSWorkspace`. |
@@ -122,7 +140,7 @@ default.
 
 - **Open at Login** sits in the sidebar footer as well as in Settings; both drive the same
   `SMAppService` registration.
-- **New folder** in the main window, then **Add apps** to pick from everything installed.
+- **Add Folder** in the sidebar, then **Add Apps** to pick from everything installed.
 - **External drives** are scanned too, on the drive itself and up to three folders down. Turn
   the scan off, or switch off one drive at a time, in **Settings → External Drives**. **Choose
   Apps** in the picker opens a file dialog and reaches an app anywhere, however deep and on any
@@ -133,7 +151,7 @@ default.
   icons start to wiggle. Drag one and the others move out of its way; hold it at a side edge to
   turn the page. The red badge removes an app. **Done**, Escape or a click on empty space stops
   arranging, and the folder's Dock icon is redrawn once, then.
-- **Drag** folders in the sidebar to reorder them.
+- **Drag** folders in the sidebar to reorder them. The selected folder shows its delete button.
 - **Grid** controls set the columns (2, 3, 4 or 5) and the apps per page (4, 6, 8, 9, 12, 16 or 20;
   20 fills four columns by five rows). More apps than fit means pages.
 - **Folder options**, under Add Folder in the sidebar, holds three switches that apply to every
@@ -141,7 +159,8 @@ default.
   yourself always show in full. **Refresh all folders** rereads every folder and redraws the
   icons, for when an app's icon has changed. **Reset app names** removes every name you typed,
   after asking.
-- **Swipe** horizontally on a trackpad inside the popup to page through.
+- **Page** through a folder by swiping sideways on a trackpad, scrolling a mouse wheel, or
+  clicking and dragging, in the popup and in the main window alike.
 - **Add to Dock** builds a launcher bundle with the generated icon and drops it into the Dock.
 - **Escape** or a click anywhere outside closes the popup.
 
@@ -230,6 +249,7 @@ State on disk:
     .apporder        ["App1.app", "App2.app"]
     .labels          {"Slack.app": "Custom label"}
     Safari.app       symlink -> /Applications/Safari.app
+  .folderorder       ["Dev", "Games"], the sidebar order
   .launchers/
     FolderName.app/  generated launcher bundle
     mousepos         helper mirror for launchers made by older versions

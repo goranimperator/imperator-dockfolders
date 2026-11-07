@@ -166,11 +166,12 @@ struct FolderDetailView: View {
             Spacer()
             Image(systemName: "app.dashed")
                 .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
             Text("No apps yet")
                 .font(.title3)
                 .foregroundStyle(.secondary)
             Button("Add Apps") { showAppPicker = true }
+                .buttonStyle(.bordered)
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -298,6 +299,111 @@ struct GridSettingsBar: View {
     }
 }
 
+/// The two decisions a click-and-drag page swipe makes, shared by the main
+/// grid and the Dock popup so they feel the same.
+enum PageSwipe {
+    /// How far the pages follow the pointer. Past the first or last page they
+    /// follow at a third of the distance, so they give without pretending
+    /// there is more.
+    static func follow(_ translation: CGFloat, page: Int, pageCount: Int) -> CGFloat {
+        let pastStart = page == 0 && translation > 0
+        let pastEnd = page >= pageCount - 1 && translation < 0
+        return pastStart || pastEnd ? translation / 3 : translation
+    }
+
+    /// The page a released swipe settles on: a fifth of a page's width turns
+    /// it, and a quick flick turns it even if it did not travel that far.
+    static func target(from page: Int, pageCount: Int, release value: DragGesture.Value, width: CGFloat) -> Int {
+        let threshold = width * 0.2
+        let travel = abs(value.predictedEndTranslation.width) > abs(value.translation.width)
+            ? value.predictedEndTranslation.width
+            : value.translation.width
+        if travel < -threshold && page < pageCount - 1 { return page + 1 }
+        if travel > threshold && page > 0 { return page - 1 }
+        return page
+    }
+}
+
+/// Turns a scroll into one page change per gesture, from a trackpad or a mouse.
+///
+/// The two differ enough to need separate rules. A trackpad reports a gesture:
+/// `.began` starts it, a momentum tail follows it, and both axes carry precise
+/// deltas, so a page turn is a horizontal swipe and vertical scrolling is left
+/// alone. A plain mouse wheel reports none of that: no phase, no momentum, and
+/// on most mice no horizontal axis at all. Held to the trackpad rules it could
+/// never turn a page. Ported from Imperator MenuBarFolders.
+struct PageSwipeAccumulator {
+    /// Far enough that a diagonal two-finger scroll never turns a page.
+    private static let trackpadThreshold: CGFloat = 10
+    /// One detent. Each wheel event counts as at least one (see `detents`), and
+    /// the latch below keeps a fast spin to one page.
+    private static let wheelThreshold: CGFloat = 1
+    /// A wheel gesture has no end, so a pause ends it instead. Below this,
+    /// spinning the wheel keeps adding to the same gesture and turns one page.
+    private static let wheelGap: TimeInterval = 0.25
+
+    private var x: CGFloat = 0
+    private var y: CGFloat = 0
+    private var triggered = false
+    private var lastWheelTime: TimeInterval = -1
+
+    /// Returns -1 for a page back, 1 for a page forward, 0 for nothing yet.
+    mutating func direction(for event: NSEvent) -> Int {
+        // Only a real gesture has phases. Precise deltas alone are not enough:
+        // wheel smoothers (Mos, remote desktops) send precise deltas with no
+        // phase, and under the trackpad rules nothing ever reset them.
+        if event.phase != [] || event.momentumPhase != [] {
+            return trackpadDirection(for: event)
+        }
+        return wheelDirection(for: event)
+    }
+
+    /// A wheel event as whole detents, never less than one. With the default
+    /// scroll acceleration a slow notch reports about 0.1, so raw deltas never
+    /// reached a threshold notch by notch.
+    private static func detents(_ value: CGFloat) -> CGFloat {
+        if value == 0 { return 0 }
+        return value > 0 ? max(1, value) : min(-1, value)
+    }
+
+    private mutating func trackpadDirection(for event: NSEvent) -> Int {
+        if event.phase == .began { reset() }
+        if event.phase == .cancelled || event.phase == .ended {
+            reset()
+            return 0
+        }
+        // The momentum tail is one gesture's leftovers, not a new swipe.
+        if event.momentumPhase != [] { return 0 }
+        guard !triggered else { return 0 }
+        x += event.scrollingDeltaX
+        y += event.scrollingDeltaY
+        guard abs(x) > abs(y), abs(x) > Self.trackpadThreshold else { return 0 }
+        triggered = true
+        return x > 0 ? -1 : 1
+    }
+
+    private mutating func wheelDirection(for event: NSEvent) -> Int {
+        if lastWheelTime < 0 || event.timestamp - lastWheelTime > Self.wheelGap { reset() }
+        lastWheelTime = event.timestamp
+        guard !triggered else { return 0 }
+        x += Self.detents(event.scrollingDeltaX)
+        y += Self.detents(event.scrollingDeltaY)
+        // Whichever axis the wheel actually moves: a plain wheel only has Y.
+        let delta = abs(x) >= abs(y) ? x : y
+        guard abs(delta) >= Self.wheelThreshold else { return 0 }
+        triggered = true
+        // Up or left goes back, the same way a swipe of that sign does.
+        // NSEvent has already applied the natural-scrolling preference.
+        return delta > 0 ? -1 : 1
+    }
+
+    mutating func reset() {
+        x = 0
+        y = 0
+        triggered = false
+    }
+}
+
 /// Delivers trackpad scrolls over the grid, wherever the pointer is on it.
 ///
 /// It used to override `scrollWheel(with:)` from behind the grid, which only
@@ -374,9 +480,7 @@ struct AppGridCarousel: View {
     @State private var editingText: String = ""
     @State private var clickOutsideMonitor: Any?
     @FocusState private var isLabelFieldFocused: Bool
-    @State private var scrollAccumX: CGFloat = 0
-    @State private var scrollAccumY: CGFloat = 0
-    @State private var scrollGestureTriggered = false
+    @State private var swipe = PageSwipeAccumulator()
 
     /// Display order as app ids. Follows `apps`, except while an icon is lifted,
     /// when it is the live order the other icons slide into.
@@ -390,7 +494,7 @@ struct AppGridCarousel: View {
 
     private static let space = "appGrid"
     /// Icons settling into slots: quick, with a little give at the end.
-    private static let settle = Animation.spring(response: 0.32, dampingFraction: 0.78)
+    private static let settle = Animation.spring(response: 0.32, dampingFraction: 0.8)
     private static let pageTurn = Animation.interactiveSpring(response: 0.35, dampingFraction: 0.86)
     /// Long enough that a click or a swipe never lifts an icon by accident.
     private static let holdToLift: Duration = .milliseconds(380)
@@ -428,6 +532,7 @@ struct AppGridCarousel: View {
 
         let size: CGSize
         let columns: Int
+        let itemsPerPage: Int
         let rows: Int
         let cellWidth: CGFloat
         let cellHeight: CGFloat
@@ -436,6 +541,7 @@ struct AppGridCarousel: View {
         init(size: CGSize, columns: Int, itemsPerPage: Int) {
             self.size = size
             self.columns = columns
+            self.itemsPerPage = max(1, itemsPerPage)
             rows = Int(ceil(Double(itemsPerPage) / Double(columns)))
             let availableWidth = size.width - Self.horizontalPadding * 2 - Self.spacing * CGFloat(columns - 1)
             let availableHeight = size.height - 24 - Self.spacing * CGFloat(rows - 1)
@@ -458,7 +564,12 @@ struct AppGridCarousel: View {
         func slot(nearest point: CGPoint) -> Int {
             let col = Int(((point.x - Self.horizontalPadding) / (cellWidth + Self.spacing)).rounded(.down))
             let row = Int(((point.y - top) / (cellHeight + Self.spacing)).rounded(.down))
-            return min(max(row, 0), rows - 1) * columns + min(max(col, 0), columns - 1)
+            let raw = min(max(row, 0), rows - 1) * columns + min(max(col, 0), columns - 1)
+            // A page's rows can hold more slots than the page does: 4 per row
+            // and 9 per page is 3 rows, 12 slots for 9 apps. A drop in one of
+            // the 3 empty slots named an index on the next page, so the icon
+            // jumped off the page it was dropped on.
+            return min(raw, itemsPerPage - 1)
         }
     }
 
@@ -508,33 +619,16 @@ struct AppGridCarousel: View {
                 .clipped()
                 .background(
                     ScrollWheelOverlay { event in
-                        if event.phase == .began {
-                            scrollAccumX = 0
-                            scrollAccumY = 0
-                            scrollGestureTriggered = false
-                        }
-                        if event.phase == .cancelled || event.phase == .ended {
-                            scrollAccumX = 0
-                            scrollAccumY = 0
-                            scrollGestureTriggered = false
-                            return
-                        }
-                        if event.momentumPhase != [] { return }
-                        guard !scrollGestureTriggered else { return }
-                        scrollAccumX += event.scrollingDeltaX
-                        scrollAccumY += event.scrollingDeltaY
-                        // Only horizontal swipe triggers page change
-                        guard abs(scrollAccumX) > abs(scrollAccumY) else { return }
-                        if abs(scrollAccumX) > 10 {
-                            scrollGestureTriggered = true
-                            withAnimation(Self.pageTurn) {
-                                if scrollAccumX > 0 && currentPage > 0 {
-                                    currentPage -= 1
-                                } else if scrollAccumX < 0 && currentPage < totalPages - 1 {
-                                    currentPage += 1
-                                }
-                            }
-                        }
+                        // A held or carried icon owns paging: the edge dwell
+                        // turns pages for it and re-targets the drop.
+                        guard press == nil, lifted == nil else { return }
+                        let step = swipe.direction(for: event)
+                        guard step != 0 else { return }
+                        // Clamped rather than range-checked, so a page left
+                        // past the end by a smaller Per page still steps back.
+                        let target = min(max(currentPage + step, 0), totalPages - 1)
+                        guard target != currentPage else { return }
+                        withAnimation(Self.pageTurn) { currentPage = target }
                     }
                 )
             }
@@ -550,6 +644,11 @@ struct AppGridCarousel: View {
             // is lifted the live order is the source of truth.
             guard lifted == nil, ids != order else { return }
             withAnimation(Self.settle) { order = ids }
+            currentPage = min(currentPage, totalPages - 1)
+        }
+        .onChange(of: itemsPerPage) { _, _ in
+            // The carousel keeps its state when only Per page changes, so a
+            // page past the new end has to be pulled back.
             currentPage = min(currentPage, totalPages - 1)
         }
         .onChange(of: isArranging) { _, arranging in
@@ -604,7 +703,35 @@ struct AppGridCarousel: View {
                     .onEnded { value in pointerEnded(on: app, value, metrics: metrics) },
                 including: editingAppId == app.id ? .subviews : .all
             )
+            .accessibilityAction(named: "Move Left") { step(app, by: -1) }
+            .accessibilityAction(named: "Move Right") { step(app, by: 1) }
             .transition(.scale(scale: 0.4).combined(with: .opacity))
+    }
+
+    /// Keyboard and VoiceOver path for reordering: one slot at a time, committed
+    /// straight away (BrandBook 7.18).
+    ///
+    /// It enters arranging first, as a drag does, so the Dock icon is redrawn
+    /// once at Done rather than with a Dock restart per step, and it follows the
+    /// app onto its new page.
+    private func step(_ app: AppEntry, by offset: Int) {
+        guard lifted == nil, press == nil, let from = order.firstIndex(of: app.id) else { return }
+        let to = min(max(from + offset, 0), order.count - 1)
+        guard to != from else { return }
+        if !isArranging {
+            withAnimation(.easeOut(duration: 0.2)) { isArranging = true }
+        }
+        withAnimation(Self.settle) {
+            order.remove(at: from)
+            order.insert(app.id, at: to)
+        }
+        withAnimation(Self.pageTurn) { currentPage = to / itemsPerPage }
+        commitOrder()
+    }
+
+    private func commitOrder() {
+        let byId = Dictionary(apps.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        onReorder(order.compactMap { byId[$0] })
     }
 
     private func cellContent(_ app: AppEntry, metrics: Metrics, isLifted: Bool) -> some View {
@@ -664,7 +791,7 @@ struct AppGridCarousel: View {
                 if !app.exists {
                     Text("Missing")
                         .font(.caption2)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppColors.error)
                 }
             }
             // The label stays behind while the icon is carried, as on an iPhone.
@@ -820,10 +947,7 @@ struct AppGridCarousel: View {
         edgeDirection = 0
         guard let current = lifted else { return }
         withAnimation(Self.settle) { lifted = nil }
-        if order != current.startOrder {
-            let byId = Dictionary(apps.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            onReorder(order.compactMap { byId[$0] })
-        }
+        if order != current.startOrder { commitOrder() }
     }
 
     private func remove(_ app: AppEntry) {
@@ -848,27 +972,15 @@ struct AppGridCarousel: View {
     }
 
     private func finishPageSwipe(_ value: DragGesture.Value, width: CGFloat) {
-        let threshold = width * 0.2
-        // A quick flick turns the page even if it did not travel far.
-        let travel = abs(value.predictedEndTranslation.width) > abs(value.translation.width)
-            ? value.predictedEndTranslation.width
-            : value.translation.width
+        let target = PageSwipe.target(from: currentPage, pageCount: totalPages, release: value, width: width)
         withAnimation(Self.pageTurn) {
-            if travel < -threshold && currentPage < totalPages - 1 {
-                currentPage += 1
-            } else if travel > threshold && currentPage > 0 {
-                currentPage -= 1
-            }
+            currentPage = target
             pageDragOffset = 0
         }
     }
 
-    /// Past the first or last page the grid follows the pointer at a third of
-    /// the distance, so it gives without pretending there is more.
     private func rubberBanded(_ translation: CGFloat, width: CGFloat) -> CGFloat {
-        let pastStart = currentPage == 0 && translation > 0
-        let pastEnd = currentPage >= totalPages - 1 && translation < 0
-        return pastStart || pastEnd ? translation / 3 : translation
+        PageSwipe.follow(translation, page: currentPage, pageCount: totalPages)
     }
 
     private func haptic(_ pattern: NSHapticFeedbackManager.FeedbackPattern) {
@@ -923,6 +1035,8 @@ struct AppGridCarousel: View {
                 Circle()
                     .fill(index == currentPage ? Color.primary : Color.secondary.opacity(0.4))
                     .frame(width: 7, height: 7)
+                    .contentShape(Rectangle())
+                    .cursor(.pointingHand)
                     .onTapGesture {
                         withAnimation(Self.pageTurn) {
                             currentPage = index
@@ -973,6 +1087,7 @@ struct DeleteBadge: View {
                 .animation(.easeOut(duration: 0.15), value: isHovered)
         }
         .buttonStyle(.borderless)
+        .help("Remove from folder")
         .onHover { hovering in isHovered = hovering }
     }
 }
@@ -990,6 +1105,7 @@ struct RevertLabelButton: View {
                 .animation(.easeOut(duration: 0.15), value: isHovered)
         }
         .buttonStyle(.borderless)
+        .help("Use the app's own name")
         .onHover { hovering in isHovered = hovering }
     }
 }

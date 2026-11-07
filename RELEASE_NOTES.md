@@ -1,12 +1,13 @@
-Arranging apps works like an iPhone home screen, the sidebar reorders the same way, and the popup lands on the right display.
+Page the popup by clicking and dragging, page with a mouse wheel, and a pass against the updated Imperator BrandBook.
 
-- Hold an app, or click Arrange, and the icons start to wiggle. Drag one and the others move out of its way while you drag, instead of nothing moving until you let go. Hold it at a side edge to turn the page. The red badge that removes an app only shows while arranging. Done, Escape or a click on empty space stops.
-- The Dock is no longer restarted for every icon you move. It is refreshed once, when you finish arranging, so the window no longer freezes and the Dock no longer flashes per move.
-- A two-finger swipe turns the page wherever the pointer is. It used to work only in the gaps between icons.
-- Folders in the sidebar lift and slide into place when dragged, the same way.
-- Cut app names, Refresh all folders and Reset app names moved into a Folder options section under Add Folder, closed by default, each with a line explaining what it does.
-- With more than one display, the popup measured against the screen with the active window instead of the screen with the Dock. It could open at the wrong height or close on its own. It now uses the Dock's screen. This is fixed in code and tested with one display only.
-- Built in Swift 6 language mode. The compiler found one real data race, in redrawing folder icons in the background, and it is fixed.
+- The popup pages by clicking and dragging, as well as by trackpad swipe and the page dots. The pages follow the pointer and give at the first and last page, and a quick flick turns the page. A click that does not move still opens the app; a swipe that starts on an icon never does.
+- A mouse wheel turns pages, in the popup and in the main window. Before, only a trackpad could.
+- An icon dropped in an empty slot at the end of a page row stays on that page. It used to land on the next one.
+- Folder rows in the sidebar no longer react to hover. The delete button shows on the selected folder, and long folder names stay on one line.
+- The popup has the window corner of macOS 27: 18pt with a continuous curve, and a 12pt arrow.
+- Apps in the grid can be moved with Move Left and Move Right from the keyboard and VoiceOver.
+- Fixes found in review: a drag started on an icon in the popup followed at half speed and snapped back; a swipe released outside the popup closed it; a swipe released over a Dock tile reopened the popup; a click beside the grid could open an app from the next page; the pointer could stay a hand after opening an app.
+- The README now shows the app, and explains the removable-volume question macOS may ask the first time the app reads an external drive.
 
 Requires macOS 14 or later, Apple silicon. Built against the macOS 27 SDK and tested on
 macOS 27 only: older versions are expected to work but have not been verified.
@@ -20,5 +21,5 @@ Done. Then clear the quarantine flag once with
 `/Applications`, or open System Settings → Privacy & Security and click Open Anyway.
 
 Grant Accessibility when prompted: it anchors the popup to the Dock icon and enables the fast
-click path. It is optional; everything works without it. No other permissions are requested, and
-the app makes no network requests.
+click path. It is optional; everything works without it. No other permissions are requested up
+front, and the app makes no network requests.

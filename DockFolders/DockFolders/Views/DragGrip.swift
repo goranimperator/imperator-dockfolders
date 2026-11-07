@@ -15,8 +15,10 @@ import SwiftUI
 /// hamburger glyphs run the full width of a column next to the row's folder
 /// icon; this grip is 8.5pt wide.
 ///
-/// Colour comes from the caller, so the grip follows the rest of the row (grey
-/// at rest, white on a selected row) rather than fighting it with its own.
+/// Colour comes from the caller, so the grip follows the rest of the row
+/// rather than fighting it with its own. BrandBook 7.18 says `.tertiary` at all
+/// times; the sidebar uses white on its selected row, where the brand fill
+/// swallows `.tertiary`. It never reacts to hover.
 struct DragGrip: View {
     private static let dot: CGFloat = 3.5
     private static let columnGap: CGFloat = 1.5

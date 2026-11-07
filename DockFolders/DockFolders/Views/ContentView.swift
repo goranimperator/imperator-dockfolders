@@ -227,7 +227,7 @@ struct NewFolderSheet: View {
 
             if let error = errorMessage {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(AppColors.error)
                     .font(.caption)
             }
 

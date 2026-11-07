@@ -40,6 +40,7 @@ There are no tests in this project. Verification is manual: build, deploy, resta
     .labels            JSON {"Slack.app": "Custom label", ...}
     Safari.app         symlink -> /Applications/Safari.app
     Slack.app          symlink -> /Applications/Slack.app
+  .folderorder         JSON ["Dev", "Games", ...], the sidebar order
   .launchers/
     FolderName.app/    generated launcher bundle (custom .icns + compiled helper binary)
 ```
@@ -98,9 +99,10 @@ Do not move the helper compile back to runtime:
 
 ### Popup panel
 
-`FolderPopupPanel.swift` is a custom `NSPanel` subclass (`PopupPanel`, level `.popUpMenu`, style `.borderless | .nonactivatingPanel`). The custom `PopupShape` draws the rounded body plus a 12pt arrow at the bottom; arrow X comes from `DockIconLocator` (Accessibility API) with mouse-position fallback. Background is `NSVisualEffectView` with `.hudWindow` material — locked to that material per BrandBook 6.3; experiments with `.popover` / `.thinMaterial` were rejected.
+`FolderPopupPanel.swift` is a custom `NSPanel` subclass (`PopupPanel`, level `.popUpMenu`, style `.borderless | .nonactivatingPanel`). The custom `PopupShape` draws the body at 18pt with a continuous curve (BrandBook 6.3/13: floating panels take the window radius; 18.25 circular is for menu bar panels only) plus an arrow 5pt tall and 12pt wide where it leaves the body. The panel is positioned over the Dock icon that `DockIconLocator` finds (Accessibility API), with the mouse position as fallback; the arrow itself is always drawn at the panel's centre, so a panel clamped against a screen edge can point beside its tile. Background is `NSVisualEffectView` with `.hudWindow` material, locked to that material per BrandBook 6.3; experiments with `.popover` / `.thinMaterial` were rejected.
 
-- Dismissal: outside mouse-downs fed from the app-wide CGEvent tap (see Popup latency) + local Escape-key monitor.
+- Dismissal: outside mouse-downs fed from the app-wide CGEvent tap (see Popup latency) + local Escape-key monitor. The 200ms pointer check (`checkMouseDismiss`) skips while the mouse button is down, and once a click-and-drag swipe has started (`swipeKeepsOpen`) the popup stays open until the pointer has been back inside, so a swipe released past the panel's side does not close it mid page turn. `dismiss()` drops the content view, so cells' `onDisappear` runs and a pushed cursor is popped. The event-tap fast path only counts a mouse-up as a Dock click if the button went down within 12pt of it.
+- Paging: trackpad swipe, mouse wheel, page dots, and click-and-drag (ported from MenuBarFolders). An app cell is not a tap gesture: one `DragGesture(minimumDistance: 0)` decides, so a press that never travels launches the app and a swipe that started on an icon never does.
 - App cell width is hard-coded to 88pt across the grid so layout stays aligned even when the "Cut app names" setting truncates names — that toggle only changes line count, never cell size. Empty placeholder cells must use the same width.
 - Custom app labels always render in full (2 lines) regardless of cut mode.
 
@@ -111,7 +113,7 @@ Trackpad swipe navigates one page per gesture. Two implementations because event
 - **In the popup**: `PopupPanel.scrollWheel(with:)` override. Global monitors don't fire inside non-activating panels.
 - **In the main app**: `ScrollWheelOverlay` inside `AppGridCarousel`, an `NSViewRepresentable` whose `NSView` installs a local `.scrollWheel` monitor and only checks whether the pointer is over its own bounds. It used to override `scrollWheel(with:)` from behind the grid, which only ever saw scrolls in the gaps between icons: over an icon SwiftUI's own view takes the event and an unused scroll goes up the superview chain, never sideways. The view returns nil from `hitTest`, so it never takes a click.
 
-Both track `event.phase` + `momentumPhase`, fire once per gesture, and require horizontal delta to exceed vertical before registering as a page swipe.
+Both feed `PageSwipeAccumulator` (in `FolderDetailView.swift`, ported from MenuBarFolders): one page per gesture. A trackpad needs a horizontal swipe and ignores momentum; a plain mouse wheel has no phases and usually no horizontal axis, so each wheel event counts as at least one detent, one detent turns a page, and a 0.25s pause ends its gesture. Routing is by gesture phase only: precise deltas without a phase (Mos, remote desktops) are treated as a wheel. Before it, a mouse wheel could never turn a page.
 
 ### Icon generation
 
@@ -171,6 +173,8 @@ The sidebar folder list (`FolderListView`) reorders the same way: positioned row
 `ScrollView`, the row lifts and follows the pointer, the others slide, and one write on drop. It
 was a `List` with `.onMove`, which on macOS is the same system drag session. This departs from
 BrandBook 7.18 on purpose. There is no auto-scroll while dragging past the visible rows.
+
+Rows have no hover state (BrandBook 7.5): the trash is revealed on the selected row, the row carries `.pointingHand`, and the grip is `.tertiary` at rest. Grid slots are clamped to `itemsPerPage - 1`: a page's rows can hold more slots than the page does (4 per row, 9 per page is 12 slots), and a drop in an empty one used to land on the next page.
 
 ### Multiple displays: never `NSScreen.main`
 

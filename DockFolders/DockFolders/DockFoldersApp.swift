@@ -145,7 +145,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     Task { @MainActor in delegate.handleDockClick(topLeft: location) }
                 case .leftMouseDown, .rightMouseDown:
                     let location = event.location
+                    let isLeft = type == .leftMouseDown
                     Task { @MainActor in
+                        if isLeft { delegate.lastLeftMouseDown = location }
                         let screenH = NSScreen.screens.first?.frame.height ?? 0
                         FolderPopupController.shared.handleGlobalMouseDown(
                             screenPoint: NSPoint(x: location.x, y: screenH - location.y)
@@ -177,7 +179,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let tap = clickTap { CGEvent.tapEnable(tap: tap, enable: true) }
     }
 
+    /// Where the last left button press went down, in the tap's top-left
+    /// coordinates. A mouse-up only counts as a Dock click if it came up near it.
+    var lastLeftMouseDown: CGPoint?
+
     private func handleDockClick(topLeft: CGPoint) {
+        // A click presses and releases in one place. A drag that started
+        // somewhere else and ended over a tile, such as a page swipe in the
+        // popup or a Dock item being rearranged, is not a click on that tile.
+        guard let down = lastLeftMouseDown,
+              hypot(down.x - topLeft.x, down.y - topLeft.y) < 12 else { return }
         let screenH = NSScreen.screens.first?.frame.height ?? 0
         let point = NSPoint(x: topLeft.x, y: screenH - topLeft.y)
         let names = Set(store.folders.map(\.name))

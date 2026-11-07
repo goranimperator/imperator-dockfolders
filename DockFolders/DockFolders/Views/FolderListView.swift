@@ -6,7 +6,6 @@ struct FolderListView: View {
     @State private var folderToDelete: DockFolder?
     @State private var editingFolder: DockFolder?
     @State private var editedName: String = ""
-    @State private var hoveredFolder: String?
     @FocusState private var isRenameFieldFocused: Bool
 
     /// Display order as folder ids. Follows the store, except while a row is
@@ -111,14 +110,16 @@ struct FolderListView: View {
         }
     }
 
-    /// One folder row: grip, glyph, name and count, the Dock indicator and the
-    /// trash that appears on hover.
+    /// One folder row: grip, glyph, name and count, the Dock indicator and,
+    /// on the selected row, the trash.
     private func row(_ folder: DockFolder) -> some View {
         let isSelected = selectedFolder == folder
         return HStack(spacing: 10) {
             DragGrip()
                 .help("Drag to reorder")
-                .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(Color.gray))
+                // BrandBook 7.18 says .tertiary at all times. White on the
+                // selected row is a deviation: the brand fill swallows .tertiary.
+                .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.tertiary))
 
             // Same weight as the dock indicator on the trailing edge of
             // the row, so both row glyphs read as one set, and the same
@@ -133,11 +134,17 @@ struct FolderListView: View {
                 .focused($isRenameFieldFocused)
             } else {
                 VStack(alignment: .leading) {
+                    // One line each, truncated: the selected row gives up width
+                    // to its trash button, and a name that wrapped there made
+                    // that row taller than the pitch every row is placed on.
                     Text(folder.name)
                         .font(.system(size: 14))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                         .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
                     Text("\(folder.apps.count) apps")
                         .font(.system(size: 11, weight: .medium))
+                        .lineLimit(1)
                         .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                 }
                 .contentShape(Rectangle())
@@ -151,8 +158,9 @@ struct FolderListView: View {
             }
             Spacer()
             if editingFolder != folder {
-                let isHovered = hoveredFolder == folder.id
-                HStack(spacing: isHovered ? 6 : 0) {
+                // Rows have no hover state (BrandBook 7.5): what a row used to
+                // reveal under the pointer is revealed on selection instead.
+                HStack(spacing: isSelected ? 6 : 0) {
                     if folder.isInDock {
                         Image(systemName: "dock.rectangle")
                             .font(.system(size: 14))
@@ -170,16 +178,11 @@ struct FolderListView: View {
                     // beside it.
                     .buttonStyle(.plain)
                     .help("Delete")
-                    .frame(width: isHovered ? nil : 0)
-                    .opacity(isHovered ? 1 : 0)
+                    .frame(width: isSelected ? nil : 0)
+                    .opacity(isSelected ? 1 : 0)
                     .clipped()
                 }
-                .animation(.easeInOut(duration: 0.15), value: isHovered)
-            }
-        }
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.1)) {
-                hoveredFolder = hovering ? folder.id : nil
+                .animation(.easeInOut(duration: 0.15), value: isSelected)
             }
         }
         // Inner padding, inside the fill. Reaches the 20pt margin the
@@ -203,6 +206,10 @@ struct FolderListView: View {
         // Hit testing goes last, so the whole padded row selects, not
         // just the area the labels happen to cover.
         .contentShape(Rectangle())
+        // The pointing hand is the only thing on a row that answers the
+        // pointer (BrandBook 7.5). None while the rename field is open: a text
+        // field keeps its own cursor (7.16).
+        .cursor(editingFolder == folder ? nil : .pointingHand)
         .onTapGesture { selectedFolder = folder }
         .contextMenu {
             Button(folder.isInDock ? "Remove from Dock" : "Add to Dock") {

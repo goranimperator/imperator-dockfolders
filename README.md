@@ -145,8 +145,7 @@ default.
 
 ## Use
 
-- **Open at Login** sits in the sidebar footer as well as in Settings; both drive the same
-  `SMAppService` registration.
+- **Open at Login** is in **Settings** and drives an `SMAppService` registration.
 - **Add Folder** in the sidebar, then **Add Apps** to pick from everything installed.
 - **External drives** are scanned too, on the drive itself and up to three folders down. Turn
   the scan off, or switch off one drive at a time, in **Settings → External Drives**. **Choose
@@ -161,7 +160,7 @@ default.
 - **Drag** folders in the sidebar to reorder them. The selected folder shows its delete button.
 - **Grid** controls set the columns (2, 3, 4 or 5) and the apps per page (4, 6, 8, 9, 12, 16 or 20;
   20 fills four columns by five rows). More apps than fit means pages.
-- **Folder options**, under Add Folder in the sidebar, holds three switches that apply to every
+- **Options**, under Add Folder in the sidebar, holds three switches that apply to every
   folder. **Cut app names** keeps long names to one line in the Dock popup; names you typed
   yourself always show in full. **Refresh all folders** rereads every folder and redraws the
   icons, for when an app's icon has changed. **Reset app names** removes every name you typed,
@@ -174,8 +173,8 @@ default.
   the sidebar says so with a **Download** button, and you get one notification per new version.
   Both open the release page; installing works as described under Install, including the
   Gatekeeper step: a downloaded update is blocked on first launch just like the first install, so
-  choose **Done** and run the `xattr` command again. The switch and a **Check Now** button sit in
-  the sidebar footer above **Open at Login**, and again under **Settings → Updates**.
+  choose **Done** and run the `xattr` command again. **Settings → Updates** has the switch and a
+  **Check Now** button.
 
 Apps are added as **symlinks**, not copies and not Finder aliases. Nothing is duplicated on
 disk and nothing is moved.
@@ -240,7 +239,7 @@ DockFolders/DockFolders/
     AppColors.swift         brand tokens
   Views/
     FolderPopupPanel.swift  the Dock popup: NSPanel subclass, arrow shape, paged app grid
-    ContentView.swift       main window shell, sidebar split, Folder options
+    ContentView.swift       main window shell, sidebar split, Options
     FolderListView.swift    sidebar list of folders, drag to reorder
     FolderDetailView.swift  folder editor: app grid, arranging, inline rename
     AppPickerView.swift     picker for adding installed apps

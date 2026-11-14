@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var selectedFolder: DockFolder?
     @State private var showNewFolderSheet = false
     @State private var addFolderHovered = false
+    @State private var optionsHovered = false
     @State private var refreshSpinAngle: Double = 0
     @State private var showResetNamesAlert = false
     @AppStorage("cutAppNames") private var cutAppNames: Bool = false
@@ -48,18 +49,6 @@ struct ContentView: View {
                     Divider()
 
                     optionsSection
-
-                    Divider()
-
-                    UpdateCheckRow()
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-
-                    Divider()
-
-                    LaunchAtLoginToggle()
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
                 }
                 .frame(minWidth: 200, idealWidth: 220, maxWidth: 300)
 
@@ -131,22 +120,27 @@ struct ContentView: View {
                 withAnimation(.easeInOut(duration: 0.2)) { optionsExpanded.toggle() }
             } label: {
                 HStack(spacing: 6) {
-                    Text("Folder options".uppercased())
-                        .font(.system(size: 11, weight: .semibold))
+                    Label("Options", systemImage: "slider.horizontal.3")
+                        .font(.system(size: 13))
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .medium))
                         .rotationEffect(.degrees(optionsExpanded ? 90 : 0))
                 }
-                .foregroundStyle(.secondary)
+                .opacity(optionsHovered ? 1.0 : 0.5)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             .cursor(.pointingHand)
+            .onHover { h in
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    optionsHovered = h
+                }
+            }
             .accessibilityValue(optionsExpanded ? "Expanded" : "Collapsed")
             .padding(.horizontal, 20)
             .padding(.top, 10)
-            .padding(.bottom, optionsExpanded ? 9 : 10)
+            .padding(.bottom, optionsExpanded ? 16 : 10)
 
             if optionsExpanded {
                 VStack(alignment: .leading, spacing: 12) {

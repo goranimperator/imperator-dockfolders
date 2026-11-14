@@ -1,7 +1,7 @@
 The app now tells you when a newer version is out.
 
 - Once a day the app asks GitHub for the latest release. When there is a newer one, a row in the sidebar says so with a Download button, and you get one notification per new version. Both open the release page; installing works as before.
-- The check is the app's only network traffic. It sends nothing but the app's name and version. Turn it off in Settings → Updates, or check right away with Check Now in the sidebar or in Settings.
+- The check is the app's only network traffic. It sends nothing but the app's name and version. Turn it off, or check right away, in Settings → Updates.
 - Updating is still done by hand. A downloaded update is blocked by Gatekeeper on first launch like any download of this app: choose Done and run the `xattr` command below again.
 - macOS asks once whether the app may show notifications, the first time there is an update to report. Saying no is fine: the sidebar row still appears.
 

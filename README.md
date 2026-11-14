@@ -115,7 +115,7 @@ To be explicit, since these are the ones people worry about:
 | **Input Monitoring** | No | No keyboard taps of any kind. The mouse-click tap above is listen-only and covered by the Accessibility grant; macOS reserves Input Monitoring for keyboard/HID observation, which this app never does. |
 | **Automation / Apple Events** | No | No AppleScript and no cross-application scripting. Restarting the Dock is `killall Dock`, a plain signal to your own process, not an Apple Event. |
 | **Screen Recording** | No | Nothing is captured. Folder icons are drawn from each app's own icon via `NSWorkspace`. |
-| **Network** | One request a day | The update check: one `GET` a day to `api.github.com/repos/goranimperator/imperator-dockfolders/releases/latest`. It sends nothing but the app's name and version as the User-Agent GitHub requires. No telemetry, no analytics, nothing about you or your folders. Turn it off in **Settings → Updates**. |
+| **Network** | One request a day | The update check: one `GET` a day to `api.github.com/repos/goranimperator/imperator-dockfolders/releases/latest`. It sends nothing but the app's name and version as the User-Agent GitHub requires. No telemetry, no analytics, nothing about you or your folders. Check Now sends the same request on demand, even with the daily check off. Turn the daily check off in **Settings → Updates**. |
 | **App Sandbox** | Not enabled | Writing to the Dock's preference domain and creating launcher bundles outside a container are both impossible inside the sandbox. This is why the app cannot ship on the Mac App Store. |
 
 ### Where it writes
@@ -174,8 +174,8 @@ default.
   the sidebar says so with a **Download** button, and you get one notification per new version.
   Both open the release page; installing works as described under Install, including the
   Gatekeeper step: a downloaded update is blocked on first launch just like the first install, so
-  choose **Done** and run the `xattr` command again. **Settings → Updates** has the switch and a
-  **Check Now** button.
+  choose **Done** and run the `xattr` command again. The switch and a **Check Now** button sit in
+  the sidebar footer above **Open at Login**, and again under **Settings → Updates**.
 
 Apps are added as **symlinks**, not copies and not Finder aliases. Nothing is duplicated on
 disk and nothing is moved.

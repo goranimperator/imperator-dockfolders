@@ -51,3 +51,10 @@ private struct CursorModifier: ViewModifier {
         }
     }
 }
+
+/// The size a scaled-down switch (`scaleEffect(0.55)`) really draws at.
+/// scaleEffect only scales the rendering, so every switch that shares a right
+/// edge with other controls takes this as its frame.
+enum SwitchMetrics {
+    static let size = CGSize(width: 54 * 0.55, height: 24 * 0.55)
+}

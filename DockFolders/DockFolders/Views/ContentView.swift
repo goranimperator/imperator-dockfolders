@@ -51,10 +51,13 @@ struct ContentView: View {
 
                     Divider()
 
-                    HStack {
-                        LaunchAtLoginToggle()
-                        Spacer()
-                    }
+                    UpdateCheckRow()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+
+                    Divider()
+
+                    LaunchAtLoginToggle()
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
                 }
@@ -161,7 +164,7 @@ struct ContentView: View {
                             // so without this the drawn capsule sits ~12pt short
                             // of the pills below it. Sizing the frame to the drawn
                             // size makes layout match what is on screen.
-                            .frame(width: 54 * 0.55, height: 24 * 0.55)
+                            .frame(width: SwitchMetrics.size.width, height: SwitchMetrics.size.height)
                     }
 
                     optionRow(

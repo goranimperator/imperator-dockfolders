@@ -69,7 +69,7 @@ struct SettingsView: View {
                     }
 
                 HStack {
-                    Text(updateStatus)
+                    Text(settingsStatus)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -82,7 +82,7 @@ struct SettingsView: View {
             } header: {
                 Text("Updates")
             } footer: {
-                Text("Once a day the app asks GitHub for the latest release and compares it with this version. Nothing is sent but the app's name and version. A newer version shows in the sidebar and as one notification; installing it is up to you.")
+                Text("Once a day the app asks GitHub for the latest release and compares it with this version. Check Now sends the same request on demand, even with the daily check off. Nothing is sent but the app's name and version. A newer version shows in the sidebar and as one notification; installing it is up to you.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -100,15 +100,11 @@ struct SettingsView: View {
         }
     }
 
-    private var updateStatus: String {
-        let current = UpdateChecker.currentVersion
-        switch UpdateChecker.shared.status {
-        case .idle: return "Version \(current)"
-        case .checking: return "Checking…"
-        case .upToDate: return "Up to date, version \(current)"
-        case .failed: return "Could not reach GitHub"
-        case .available(let release): return "Version \(release.version) is available, you have \(current)"
-        }
+    /// The shared status text, plus the running version when an update is
+    /// out, which the sidebar has no room for.
+    private var settingsStatus: String {
+        let text = UpdateChecker.shared.statusText
+        return UpdateChecker.shared.available == nil ? text : "\(text), you have \(UpdateChecker.currentVersion)"
     }
 
     private func reloadVolumes() {
@@ -131,14 +127,60 @@ struct SettingsView: View {
     }
 }
 
-/// Footer launch-at-login row. Same structure as the one in Imperator
-/// MenuBarFolders so the two apps read identically: caption label, the stock
-/// switch tinted brand, and the whole row fading in on hover.
+/// Sidebar rows just above Open at Login: the daily check's switch on one
+/// row, its last result and Check Now on the next. Check Now runs even with
+/// the switch off, because it is asked for. Same layout as the update rows in
+/// the other Imperator apps; the switch takes the footer's right edge.
+struct UpdateCheckRow: View {
+    @AppStorage(UpdateChecker.enabledKey) private var checkForUpdates = true
+    @State private var isHovered = false
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Text("Check for updates")
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 0)
+                Toggle("Check for updates", isOn: $checkForUpdates)
+                    .toggleStyle(.switch)
+                    .scaleEffect(0.55)
+                    .tint(AppColors.brand)
+                    .labelsHidden()
+                    .frame(width: SwitchMetrics.size.width, height: SwitchMetrics.size.height)
+                    .onChange(of: checkForUpdates) { _, on in
+                        if on { UpdateChecker.shared.checkIfDue() }
+                    }
+            }
+            .opacity(isHovered ? 1.0 : 0.45)
+            .animation(.easeInOut(duration: 0.2), value: isHovered)
+            .onHover { isHovered = $0 }
+
+            HStack {
+                Text(UpdateChecker.shared.statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                HoverButton(action: { Task { await UpdateChecker.shared.check() } }) {
+                    Text("Check Now")
+                        .font(.caption)
+                }
+                .fixedSize()
+                .disabled(UpdateChecker.shared.status == .checking)
+            }
+        }
+    }
+}
+
+/// Footer launch-at-login row: caption label on the left, the stock switch
+/// tinted brand on the right, and the whole row fading in on hover.
 ///
-/// No frame on the switch here: this row is left-aligned with nothing to line
-/// its right edge up against, so the layout size the switch claims does not
-/// matter. The sidebar settings rows in ContentView do need it, because their
-/// controls share a right edge.
+/// The switch sits on the same right edge as the Folder options switches
+/// above it, so it gets the same frame: scaleEffect only scales the
+/// rendering, and without the frame the drawn capsule would sit ~12pt short
+/// of that edge.
 struct LaunchAtLoginToggle: View {
     @State private var isEnabled = SMAppService.mainApp.status == .enabled
     @State private var isHovered = false
@@ -147,11 +189,13 @@ struct LaunchAtLoginToggle: View {
         HStack(spacing: 6) {
             Text("Open at Login")
                 .font(.caption)
+            Spacer(minLength: 0)
             Toggle("Open at Login", isOn: $isEnabled)
                 .toggleStyle(.switch)
                 .scaleEffect(0.55)
                 .tint(AppColors.brand)
                 .labelsHidden()
+                .frame(width: SwitchMetrics.size.width, height: SwitchMetrics.size.height)
                 .onChange(of: isEnabled) { _, newValue in
                     do {
                         if newValue { try SMAppService.mainApp.register() }

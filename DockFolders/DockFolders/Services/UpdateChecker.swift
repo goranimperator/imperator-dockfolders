@@ -40,6 +40,19 @@ final class UpdateChecker: NSObject {
         return nil
     }
 
+    /// The last result, with the running version. Shown under the switch in
+    /// the sidebar and in Settings.
+    var statusText: String {
+        let current = Self.currentVersion
+        switch status {
+        case .idle: return "Version \(current)"
+        case .checking: return "Checking\u{2026}"
+        case .upToDate: return "Up to date, version \(current)"
+        case .failed: return "Could not reach GitHub"
+        case .available(let release): return "Version \(release.version) is available"
+        }
+    }
+
     static let enabledKey = "checkForUpdates"
     private static let lastCheckKey = "lastUpdateCheck"
     private static let notifiedKey = "notifiedUpdateVersion"

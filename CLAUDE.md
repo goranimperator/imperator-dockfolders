@@ -214,7 +214,9 @@ failure retries within the hour and a Mac that slept through the mark checks soo
 Tags are compared numerically per component (`1.0.10` is newer than `1.0.9`). A newer version
 sets `status = .available`, which shows a row in the sidebar and in Settings, and posts one
 notification per version (`notifiedUpdateVersion`). The notification permission is requested
-only then, never at first launch. Links open only for `https://github.com`. No self-install: the
+only then, never at first launch. Links open only for `https://github.com`. The switch, last result and Check Now live in
+`UpdateCheckRow` (SettingsView.swift), shown in the sidebar footer above Open at Login; both
+it and Settings read the text from `UpdateChecker.statusText`. No self-install: the
 app is not notarized, so updating stays the manual README flow. The README's Network row and
 Notifications section describe all of this; keep them true if the check changes.
 
@@ -295,10 +297,10 @@ Toggle rules that follow from this (BrandBook 7.2):
   Settings behaves. This covers the toggle, its label and the HStack wrapping them.
 - `scaleEffect` scales only the rendering; the switch still claims 54x24pt in layout. Where a
   switch shares a right edge with other controls (the Folder options rows in the sidebar), give it
-  `.frame(width: 54 * 0.55, height: 24 * 0.55)` so layout matches what is drawn, then put every
+  `.frame(width: SwitchMetrics.size.width, height: SwitchMetrics.size.height)` (ViewExtensions.swift) so layout matches what is drawn, then put every
   trailing control in a shared `.frame(width: trailingControlWidth, alignment: .trailing)`.
   Without that the drawn capsule sits ~12pt short of the pills and the column looks ragged.
-  A left-aligned row with no shared edge (the footer `LaunchAtLoginToggle`) needs no frame.
+  The footer `LaunchAtLoginToggle` is right-aligned on that same edge and takes the same frame.
 - The old `.frame(width: 36, height: 20)` is wrong and must not come back: it is neither the
   drawn size nor the layout size.
 
